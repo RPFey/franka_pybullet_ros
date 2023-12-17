@@ -11,16 +11,9 @@ SIM_LENGTH_SEC = 60
 
 
 def main():
-    """
-    REMARK:
-    Due to the I assume initial reset the simulation starts out with some velocity in the joints. It will therefore
-    move in the beginning of the simulation. From there on after the si mulation however should be properly gravity
-    compensating when you move the joints with the mouse, making them stand still or giving them momentum.
-    """
-
     # Basic Setup of environment
-
     bc = BulletClient(p.GUI)
+    bc.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
     bc.configureDebugVisualizer(rgbBackground=[33. / 255., 90. / 255., 127. / 255.])
     bc.setTimeStep(SAMPLING_RATE)
     bc.setGravity(0, 0, -9.81)
@@ -51,7 +44,6 @@ def main():
         # compensate for gravity but leave all other movement as is.
         pos, vel, force, effort = panda_robot.get_pos_vel_force_torque()
         desired_acc = [0. for _ in pos]
-        # print(torque[-2:])
 
         # Determine proper torque for the desired gravity compensation acceleration and set it in the robot
         torques = panda_robot.calculate_inverse_dynamics(pos=pos, vel=vel, desired_acc=desired_acc)

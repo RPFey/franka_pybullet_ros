@@ -3,7 +3,7 @@ import rospy
 from std_msgs.msg import Float64MultiArray
 from movement_datasets import read_fep_dataset
 
-pub = rospy.Publisher('position', Float64MultiArray, queue_size=10)  # TOPIC
+pub = rospy.Publisher('franka_physics_position_controller', Float64MultiArray, queue_size=10)  # TOPIC
 rospy.init_node('waypoints_publisher', anonymous=True)
 rate = rospy.Rate(1000)  # 1000hz
 my_msg = Float64MultiArray()

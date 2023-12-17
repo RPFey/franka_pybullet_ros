@@ -1,8 +1,8 @@
 import time
 import pybullet as p
-import pybullet_data
 
 from panda_robot import FrankaPanda
+from bullet_client import BulletClient
 from movement_datasets import read_fep_dataset
 
 INCLUDE_GRIPPER = True
@@ -12,19 +12,15 @@ FEP_MOVEMENT_DATASET_PATH = "./movement_datasets/fep_state_to_pid-corrected-torq
 
 
 def main():
-    """"""
-
     # Basic Setup of environment
-    physics_client_id = p.connect(p.GUI)
-    p.setTimeStep(SAMPLING_RATE)
-    p.setGravity(0, 0, -9.81)
-
-    # Setup plane
-    p.setAdditionalSearchPath(pybullet_data.getDataPath())
-    plane_id = p.loadURDF("plane.urdf")
+    bc = BulletClient(p.GUI)
+    bc.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+    bc.configureDebugVisualizer(rgbBackground=[33. / 255., 90. / 255., 127. / 255.])
+    bc.setTimeStep(SAMPLING_RATE)
+    bc.setGravity(0, 0, -9.81)
 
     # Setup robot
-    panda_robot = FrankaPanda(p, include_gripper=INCLUDE_GRIPPER)
+    panda_robot = FrankaPanda(bc, include_gripper=INCLUDE_GRIPPER, simple_model=False)
 
     # Read FEP movement dataset, discarding everything except the joint positions for each sampling point as PyBullet
     # can be set to figure joint torques out by itself and only requires desired joint positions.
@@ -48,11 +44,11 @@ def main():
         panda_robot.set_target_positions(current_pos)
 
         # Perform simulation step
-        p.stepSimulation()
+        bc.stepSimulation()
         time.sleep(SAMPLING_RATE)
 
     # Exit Simulation
-    p.disconnect()
+    bc.disconnect()
     print("Simulation end")
 
 
