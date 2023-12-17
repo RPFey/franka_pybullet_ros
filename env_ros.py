@@ -104,8 +104,8 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
 
         rospy.init_node('franka_visual', anonymous=True)
 
-        self.color_image_publisher = rospy.Publisher('/camera/depth/image_raw', Image, queue_size=10)
-        self.depth_image_publisher = rospy.Publisher('/camera/rgb/image_raw', Image, queue_size=10)
+        self.color_image_publisher = rospy.Publisher('/camera/rgb/image_raw', Image, queue_size=10)
+        self.depth_image_publisher = rospy.Publisher('/camera/depth/image_raw', Image, queue_size=10)
         self.camera_info_publisher = rospy.Publisher('/camera/rgb/camera_info', CameraInfo, queue_size=10)
         self.cv_bridge = CvBridge()
 
