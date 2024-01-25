@@ -4,7 +4,7 @@ import pybullet as p
 # object_from_list -> frequency: 850 Hz
 
 env = FrankaPandaEnvRosPhysics(connection_mode=p.DIRECT,
-                               frequency=2000.,
+                               frequency=1000.,
                                controller='position',
                                include_gripper=True,
                                simple_model=True,

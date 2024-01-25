@@ -2,7 +2,7 @@ from env_ros import FrankaPandaEnvRosVisual
 import pybullet as p
 
 env = FrankaPandaEnvRosVisual(connection_mode=p.GUI,
-                              frequency=100.,
+                              frequency=30.,
                               include_gripper=True,
                               simple_model=False,
                               object_from_sdf=True,
