@@ -192,7 +192,7 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 continue
 
-        color, depth, pos, orn = self.get_image()
+        color, depth, cam_pos, cam_orn, ee_pos, ee_orn = self.get_image()
         stamp = rospy.Time.now()
 
         image = self.cv_bridge.cv2_to_imgmsg(color)
@@ -209,13 +209,24 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
         self.camera_info_publisher.publish(self.camera_info_msg)
         self.static_tf.header.stamp = stamp
         self.static_tf.child_frame_id = "actual_camera"
-        self.static_tf.transform.translation.x = pos[0]
-        self.static_tf.transform.translation.y = pos[1]
-        self.static_tf.transform.translation.z = pos[2]
-        self.static_tf.transform.rotation.x = orn[0]
-        self.static_tf.transform.rotation.y = orn[1]
-        self.static_tf.transform.rotation.z = orn[2]
-        self.static_tf.transform.rotation.w = orn[3]
+        self.static_tf.transform.translation.x = cam_pos[0]
+        self.static_tf.transform.translation.y = cam_pos[1]
+        self.static_tf.transform.translation.z = cam_pos[2]
+        self.static_tf.transform.rotation.x = cam_orn[0]
+        self.static_tf.transform.rotation.y = cam_orn[1]
+        self.static_tf.transform.rotation.z = cam_orn[2]
+        self.static_tf.transform.rotation.w = cam_orn[3]
+        self.tf_broadcaster.sendTransform(self.static_tf)
+
+        self.static_tf.header.stamp = stamp
+        self.static_tf.child_frame_id = "ee"
+        self.static_tf.transform.translation.x = ee_pos[0]
+        self.static_tf.transform.translation.y = ee_pos[1]
+        self.static_tf.transform.translation.z = ee_pos[2]
+        self.static_tf.transform.rotation.x = ee_orn[0]
+        self.static_tf.transform.rotation.y = ee_orn[1]
+        self.static_tf.transform.rotation.z = ee_orn[2]
+        self.static_tf.transform.rotation.w = ee_orn[3]
         self.tf_broadcaster.sendTransform(self.static_tf)
         self.rate.sleep()
 
@@ -263,8 +274,8 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
         color = cv2.cvtColor(np.array(img[2]), cv2.COLOR_RGB2BGR)
         depth = self.camera_far * self.camera_near / (
                 self.camera_far - (self.camera_far - self.camera_near) * np.array(img[3]))
-        depth = np.where(depth >= self.camera_far, np.zeros_like(depth), depth)
-        return color, depth, cam_pos, cam_orn
+        # depth = np.where(depth >= self.camera_far, np.zeros_like(depth), depth)
+        return color, depth, cam_pos, cam_orn, pos, orn
 
 
 def cvPose2BulletView(t, q):

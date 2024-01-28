@@ -5,7 +5,7 @@ import pybullet as p
 
 env = FrankaPandaEnvRosPhysics(connection_mode=p.DIRECT,
                                frequency=1000.,
-                               controller='position',
+                               controller='velocity',
                                include_gripper=True,
                                simple_model=True,
                                object_from_sdf=True,
