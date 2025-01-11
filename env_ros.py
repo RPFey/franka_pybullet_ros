@@ -137,6 +137,7 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
         self.color_image_publisher = rospy.Publisher('/camera/rgb/image_raw', Image, queue_size=10)
         self.depth_image_publisher = rospy.Publisher('/camera/depth/image_raw', Image, queue_size=10)
         self.camera_info_publisher = rospy.Publisher('/camera/rgb/camera_info', CameraInfo, queue_size=10)
+        self.joint_state_pub = rospy.Publisher('/joint_state', JointState, queue_size=10)  
         self.cv_bridge = CvBridge()
 
         self.tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
@@ -236,6 +237,13 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
             start = time.time()
             self.simulate_step()
             print("Visual: ", 1 / (time.time() - start))
+        
+            joint_msg = JointState()
+            joint_msg.header.stamp = rospy.get_rostime()
+            joint_msg.name = self.panda_robot.joint_names
+            joint_msg.position = list(self.current_joint_state)
+            self.joint_state_pub.publish(joint_msg)
+
         self.bc.disconnect()
         print("Visual simulation end")
 
