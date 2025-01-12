@@ -109,13 +109,14 @@ class FrankaPanda:
                                           jointIndices=self.joints[:self.dof],
                                           controlMode=self.bc.TORQUE_CONTROL,
                                           forces=desired_torque[:self.dof])
-
+        
     def close_gripper(self):
         try:
             assert self.include_gripper
         except AssertionError as e:
             print('The robot does not have a gripper')
             return
+        
         if self.gripper_opening:
             self.gripper_opening = False
             self.gripper_moving = True
@@ -126,6 +127,7 @@ class FrankaPanda:
             joint_states = self.bc.getJointStates(self.robot_id, self.joints[-2:])
             joint_pos = np.array([state[0] for state in joint_states])
             joint_torque = np.array([state[3] for state in joint_states])
+            print("Torque : ", joint_torque)
             self.gripper_target_pos = joint_pos
 
             if np.linalg.norm(joint_pos) < 1e-4:
@@ -134,22 +136,31 @@ class FrankaPanda:
             else:
                 self.gripper_target_reached = False
 
-            if joint_torque.min() <= -40.:
+            if joint_torque.min() <= -50.:
                 self.gripper_moving = False
 
         if not self.gripper_moving:
             if self.gripper_target_reached:
                 self.gripper_target_pos = [0., 0.]
-            self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
+                self.gripper_opening = True
+                self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
+                                                jointIndices=self.joints[-2:],
+                                                controlMode=p.POSITION_CONTROL,
+                                                targetPositions=self.gripper_target_pos,
+                                                forces=[200, 200])
+            else:
+                # set the final force.
+                # 
+                self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
                                               jointIndices=self.joints[-2:],
-                                              controlMode=p.POSITION_CONTROL,
-                                              targetPositions=self.gripper_target_pos,
-                                              forces=[200, 200])
+                                              controlMode=p.TORQUE_CONTROL,
+                                              forces=[100, 100])
+            
         elif self.gripper_moving:
             self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
                                               jointIndices=self.joints[-2:],
                                               controlMode=p.VELOCITY_CONTROL,
-                                              targetVelocities=[-0.05, -0.05],
+                                              targetVelocities=[-0.10, -0.10],
                                               forces=[70, 70])
 
     def open_gripper(self):

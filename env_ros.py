@@ -4,6 +4,7 @@ import tf2_ros
 from cv_bridge import CvBridge
 from geometry_msgs.msg import TransformStamped
 from std_msgs.msg import Float64MultiArray, Bool
+from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 from sensor_msgs.msg import JointState, Image, CameraInfo
 
 import cv2
@@ -50,10 +51,15 @@ class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
                          object_from_sdf=object_from_sdf, object_from_list=object_from_list)
 
         rospy.init_node('franka_physics', anonymous=True)
-        rospy.Subscriber('franka_physics_' + self.controller + '_controller', Float64MultiArray, self.get_joint_input)
-        rospy.Subscriber('gripper_command', Bool, self.get_gripper_input)
-
-        self.joint_state_pub = rospy.Publisher('joint', JointState, queue_size=10)
+        rospy.Subscriber('/joint', JointState, self.get_joint_input)
+        self.close_gripper_srv =  rospy.Service("/close_gripper", Trigger, self.closeGripperCb)
+        self.open_gripper_srv =  rospy.Service("/open_gripper", Trigger, self.openGripperCb)
+        self.color_image_publisher = rospy.Publisher('/camera/rgb/image_raw', Image, queue_size=10)
+        self.depth_image_publisher = rospy.Publisher('/camera/depth/image_raw', Image, queue_size=10)
+        self.camera_info_publisher = rospy.Publisher('/camera/rgb/camera_info', CameraInfo, queue_size=10)
+        self.joint_state_pub = rospy.Publisher('/joint_state', JointState, queue_size=10)
+        self.cv_bridge = CvBridge()
+        
         self.tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
         self.rate = rospy.Rate(frequency)
 
@@ -62,19 +68,81 @@ class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
         else:
             self.current_joint_input = [0, 0, 0, 0, 0, 0, 0]
         self.current_gripper_input = True
+        self.panda_robot.open_gripper()
 
         self.joint_data = JointState()
         self.joint_data.name = self.panda_robot.joint_names
         self.joint_data.header.frame_id = "franka_physics_joint"
 
         self.static_tf = TransformStamped()
-        self.static_tf.header.frame_id = "world"
+        self.static_tf.header.frame_id = "base_link"
+        self.video_step = 0 
+        
+        # camera parameters
+        self.camera_width = 640
+        self.camera_height = 480
+        self.camera_near = 0.02
+        self.camera_far = 5.00
+        self.K = np.array([[606., 0., 320.], [0., 606., 240], [0., 0., 1.]])
+        self.projection_matrix = np.array([
+            [2 / self.camera_width * self.K[0, 0], 0, (self.camera_width - 2 * self.K[0, 2]) / self.camera_width, 0],
+            [0, 2 / self.camera_height * self.K[1, 1], (2 * self.K[1, 2] - self.camera_height) / self.camera_height, 0],
+            [0, 0, (self.camera_near + self.camera_far) / (self.camera_near - self.camera_far),
+             2 * self.camera_near * self.camera_far / (self.camera_near - self.camera_far)],
+            [0, 0, -1, 0]]).T
+        self.camera_info_msg = CameraInfo()
+        self.camera_info_msg.width = self.camera_width
+        self.camera_info_msg.height = self.camera_height
+        self.camera_info_msg.K = self.K.reshape(-1).astype(float).tolist()
+        self.camera_info_msg.header.frame_id = "camera_color_frame"
+        # self.camera_info_msg.header.stamp = rospy.get_rostime()
+        self.camera_info_msg.D = [0, 0, 0, 0, 0]
+        self.camera_info_msg.P = self.projection_matrix[:3, :].reshape(-1).tolist()
+        self.camera_info_msg.distortion_model = "plumb_bob"
 
     def get_joint_input(self, reading):
-        self.current_joint_input = reading.data
-
-    def get_gripper_input(self, reading):
-        self.current_gripper_input = reading.data
+        if self.controller == 'position':
+            self.current_joint_input = reading.position[:self.panda_robot.dof]
+        elif self.controller == 'velocity':
+            self.current_joint_input = reading.velocity[:self.panda_robot.dof]
+        
+    def get_hand_eye(self):
+        """
+        Get the position and orientation of the camera and the hand
+        :return: pos, orn, cam_pos, cam_orn
+        """
+        # compute camera
+        camera_joint_id = 7
+        joint_info = self.bc.getJointInfo(self.panda_robot.robot_id, camera_joint_id)
+        parent_link = joint_info[0]
+        link_info = self.bc.getLinkState(self.panda_robot.robot_id, parent_link)
+        link_pose_world = link_info[0]
+        link_ori_world = link_info[1]
+        pos = np.array(link_pose_world)
+        orn = link_ori_world
+        R = np.array(p.getMatrixFromQuaternion(orn)).reshape((3, 3))
+        ee_T = np.eye(4)
+        ee_T[:3, :3] = R
+        ee_T[:3, 3] = pos
+        ee_cam_T = np.array([[0.7061203, -0.7078083, -0.0200362, 0.00291476],
+                                  [0.7080078, 0.7061898, 0.0045781, -0.04739189],
+                                  [0.0109089, -0.0174185, 0.9997888, 0.0643254],
+                                  [0., 0., 0., 1.]])
+        cam_T = ee_T @ ee_cam_T
+        cam_pos = cam_T[:3, 3]
+        cam_orn = quaternion_from_matrix(cam_T[:3,:3])
+        
+        # compute hand
+        hand_joint_id = 8
+        joint_info = self.bc.getJointInfo(self.panda_robot.robot_id, hand_joint_id)
+        parent_link = joint_info[0]
+        link_info = self.bc.getLinkState(self.panda_robot.robot_id, parent_link)
+        link_pose_world = link_info[0]
+        link_ori_world = link_info[1]
+        pos = np.array(link_pose_world)
+        orn = link_ori_world
+        
+        return pos, orn, cam_pos, cam_orn
 
     def simulate_step(self):
         pos_reading, vel_reading, force_reading, effort_reading = self.panda_robot.get_pos_vel_force_torque()
@@ -83,7 +151,29 @@ class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
         self.joint_data.effort = effort_reading
         self.joint_data.header.stamp = rospy.get_rostime()
         self.joint_state_pub.publish(self.joint_data)
+            
+        hand_pos, hand_orn, cam_pos, cam_orn = self.get_hand_eye()
+        
+        # publish image
+        if self.video_step == 0:      
+            color, depth = self.get_image(cam_pos, cam_orn)
+            stamp = rospy.Time.now()
 
+            image = self.cv_bridge.cv2_to_imgmsg(color)
+            image.header.frame_id = "camera_color_frame"
+            image.header.stamp = stamp
+            self.color_image_publisher.publish(image)
+            
+            image = self.cv_bridge.cv2_to_imgmsg(depth)
+            image.header.frame_id = "camera_color_frame"
+            image.header.stamp = stamp
+            self.depth_image_publisher.publish(image)
+            
+            self.camera_info_msg.header.stamp = stamp
+            self.camera_info_publisher.publish(self.camera_info_msg)
+        
+        self.video_step = (self.video_step + 1) % 100
+            
         if self.controller == 'position':
             self.panda_robot.set_target_positions(self.current_joint_input)
         elif self.controller == 'velocity':
@@ -91,38 +181,87 @@ class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
         elif self.controller == 'torque':
             self.panda_robot.set_target_torques(self.current_joint_input)
 
-        if self.include_gripper:
-            if self.current_gripper_input:
-                self.panda_robot.open_gripper()
-            else:
-                self.panda_robot.close_gripper()
-
-        self.publish_object_tf()
+        self.publish_hand_eye_tf(cam_pos, cam_orn, hand_pos, hand_orn)
         self.bc.stepSimulation()
         self.rate.sleep()
+        
+    def get_image(self, cam_pos, cam_orn):
+        self.view_matrix = cvPose2BulletView(cam_pos, cam_orn)
+        img = self.bc.getCameraImage(self.camera_width, self.camera_height, self.view_matrix,
+                                     self.projection_matrix.reshape(-1).tolist(),
+                                     renderer=self.bc.ER_BULLET_HARDWARE_OPENGL,
+                                     flags=self.bc.ER_SEGMENTATION_MASK_OBJECT_AND_LINKINDEX)
+        color = cv2.cvtColor(np.array(img[2]), cv2.COLOR_RGB2BGR)
+        color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
+        depth = self.camera_far * self.camera_near / (
+                self.camera_far - (self.camera_far - self.camera_near) * np.array(img[3]))
+        
+        # depth = np.where(depth >= self.camera_far, np.zeros_like(depth), depth)
+        return color, depth
+        
+    def closeGripperCb(self, req):
+        res = TriggerResponse()
+        
+        rate = rospy.Rate(10)
+        self.panda_robot.close_gripper()
+        while self.panda_robot.gripper_moving:
+            print("Gripper is moving")
+            self.panda_robot.close_gripper()
+            rate.sleep()
+            
+        res.success = True # self.panda_robot.gripper_target_reached 
+        res.message = "Fully Close" if self.panda_robot.gripper_target_reached else \
+                    "Grasp Object"
+        return res
+        
+    def openGripperCb(self, req):
+        res = TriggerResponse()
+        
+        rate = rospy.Rate(10)
+        self.panda_robot.open_gripper()
+        while self.panda_robot.gripper_moving:
+            self.panda_robot.open_gripper()
+            rate.sleep()
+            
+        res.success = self.panda_robot.gripper_target_reached
+        res.message = "Success"
+        return res
 
     def simulation_loop(self):
         import time
         while not rospy.is_shutdown():
             start = time.time()
             self.simulate_step()
-            print("Physics: ", 1 / (time.time() - start))
+            # print("Physics: ", 1 / (time.time() - start))
+            # self.panda_robot.print_gripper_torque()
         self.bc.disconnect()
         print("Physics simulation end")
 
-    def publish_object_tf(self):
-        self.static_tf.header.stamp = rospy.Time.now()
-        for id in self.object_id:
-            pos, orn = self.bc.getBasePositionAndOrientation(id)
-            self.static_tf.child_frame_id = str(id)
-            self.static_tf.transform.translation.x = pos[0]
-            self.static_tf.transform.translation.y = pos[1]
-            self.static_tf.transform.translation.z = pos[2]
-            self.static_tf.transform.rotation.x = orn[0]
-            self.static_tf.transform.rotation.y = orn[1]
-            self.static_tf.transform.rotation.z = orn[2]
-            self.static_tf.transform.rotation.w = orn[3]
-            self.tf_broadcaster.sendTransform(self.static_tf)
+    def publish_hand_eye_tf(self, cam_pos, cam_orn, ee_pos, ee_orn):
+        stamp = rospy.Time.now()
+        self.camera_info_msg.header.stamp = stamp
+        self.camera_info_publisher.publish(self.camera_info_msg)
+        self.static_tf.header.stamp = stamp
+        self.static_tf.child_frame_id = "camera_color_frame"
+        self.static_tf.transform.translation.x = cam_pos[0]
+        self.static_tf.transform.translation.y = cam_pos[1]
+        self.static_tf.transform.translation.z = cam_pos[2]
+        self.static_tf.transform.rotation.x = cam_orn[0]
+        self.static_tf.transform.rotation.y = cam_orn[1]
+        self.static_tf.transform.rotation.z = cam_orn[2]
+        self.static_tf.transform.rotation.w = cam_orn[3]
+        self.tf_broadcaster.sendTransform(self.static_tf)
+
+        self.static_tf.header.stamp = stamp
+        self.static_tf.child_frame_id = "ee"
+        self.static_tf.transform.translation.x = ee_pos[0]
+        self.static_tf.transform.translation.y = ee_pos[1]
+        self.static_tf.transform.translation.z = ee_pos[2]
+        self.static_tf.transform.rotation.x = ee_orn[0]
+        self.static_tf.transform.rotation.y = ee_orn[1]
+        self.static_tf.transform.rotation.z = ee_orn[2]
+        self.static_tf.transform.rotation.w = ee_orn[3]
+        self.tf_broadcaster.sendTransform(self.static_tf)
 
 
 class FrankaPandaEnvRosVisual(FrankaPandaEnv):
@@ -137,6 +276,8 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
         self.color_image_publisher = rospy.Publisher('/camera/rgb/image_raw', Image, queue_size=10)
         self.depth_image_publisher = rospy.Publisher('/camera/depth/image_raw', Image, queue_size=10)
         self.camera_info_publisher = rospy.Publisher('/camera/rgb/camera_info', CameraInfo, queue_size=10)
+        self.close_gripper_srv =  rospy.Service("/close_gripper", Trigger, self.closeGripperCb)
+        self.open_gripper_srv =  rospy.Service("/open_gripper", Trigger, self.openGripperCb)
         self.joint_state_pub = rospy.Publisher('/joint_state', JointState, queue_size=10)  
         self.cv_bridge = CvBridge()
 
@@ -166,15 +307,42 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
         self.camera_info_msg.width = self.camera_width
         self.camera_info_msg.height = self.camera_height
         self.camera_info_msg.K = self.K.reshape(-1).astype(float).tolist()
-        self.camera_info_msg.header.frame_id = "actual_camera"
+        self.camera_info_msg.header.frame_id = "camera_color_frame"
         # self.camera_info_msg.header.stamp = rospy.get_rostime()
         self.camera_info_msg.D = [0, 0, 0, 0, 0]
         self.camera_info_msg.P = self.projection_matrix[:3, :].reshape(-1).tolist()
         self.camera_info_msg.distortion_model = "plumb_bob"
 
         self.static_tf = TransformStamped()
-        self.static_tf.header.frame_id = "world"
-
+        self.static_tf.header.frame_id = "base_link"
+        
+    def closeGripperCb(self, req):
+        res = TriggerResponse()
+        
+        rate = rospy.Rate(10)
+        self.panda_robot.close_gripper()
+        while self.panda_robot.gripper_moving:
+            print("Gripper is moving")
+            self.panda_robot.close_gripper()
+            rate.sleep()
+        
+        res.success = self.panda_robot.gripper_target_reached
+        res.message = "Success"
+        return res
+        
+    def openGripperCb(self, req):
+        res = TriggerResponse()
+        
+        rate = rospy.Rate(10)
+        self.panda_robot.open_gripper()
+        while self.panda_robot.gripper_moving:
+            self.panda_robot.open_gripper()
+            rate.sleep()
+            
+        res.success = self.panda_robot.gripper_target_reached
+        res.message = "Success"
+        return res
+    
     def get_joint_state(self, reading):
         self.current_joint_state = reading.position
 
@@ -197,19 +365,19 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
         stamp = rospy.Time.now()
 
         image = self.cv_bridge.cv2_to_imgmsg(color)
-        image.header.frame_id = "color_camera"
+        image.header.frame_id = "camera_color_frame"
         image.header.stamp = stamp
         self.color_image_publisher.publish(image)
         
         image = self.cv_bridge.cv2_to_imgmsg(depth)
-        image.header.frame_id = "actual_camera"
+        image.header.frame_id = "camera_color_frame"
         image.header.stamp = stamp
         self.depth_image_publisher.publish(image)
 
         self.camera_info_msg.header.stamp = stamp
         self.camera_info_publisher.publish(self.camera_info_msg)
         self.static_tf.header.stamp = stamp
-        self.static_tf.child_frame_id = "actual_camera"
+        self.static_tf.child_frame_id = "camera_color_frame"
         self.static_tf.transform.translation.x = cam_pos[0]
         self.static_tf.transform.translation.y = cam_pos[1]
         self.static_tf.transform.translation.z = cam_pos[2]
@@ -238,10 +406,12 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
             self.simulate_step()
             print("Visual: ", 1 / (time.time() - start))
         
+            joint_pos, joint_vel, joint_force, joint_effort = self.panda_robot.get_pos_vel_force_torque()
             joint_msg = JointState()
             joint_msg.header.stamp = rospy.get_rostime()
             joint_msg.name = self.panda_robot.joint_names
-            joint_msg.position = list(self.current_joint_state)
+            joint_msg.position = list(joint_pos)
+            joint_msg.velocity = list(joint_vel)
             self.joint_state_pub.publish(joint_msg)
 
         self.bc.disconnect()
@@ -273,6 +443,16 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
         #self.bc.addUserDebugLine(cam_pos, cam_pos + cam_T[:3,0] * 0.1, lineColorRGB=[1, 0, 0])
         #self.bc.addUserDebugLine(cam_pos, cam_pos + cam_T[:3,1] * 0.1, lineColorRGB=[0, 1, 0])
         #self.bc.addUserDebugLine(cam_pos, cam_pos + cam_T[:3,2] * 0.1, lineColorRGB=[0, 0, ])
+        
+        # compute hand
+        camera_joint_id = 8
+        joint_info = self.bc.getJointInfo(self.panda_robot.robot_id, camera_joint_id)
+        parent_link = joint_info[0]
+        link_info = self.bc.getLinkState(self.panda_robot.robot_id, parent_link)
+        link_pose_world = link_info[0]
+        link_ori_world = link_info[1]
+        pos = np.array(link_pose_world)
+        orn = link_ori_world
 
         self.view_matrix = cvPose2BulletView(cam_pos, cam_orn)
         img = self.bc.getCameraImage(self.camera_width, self.camera_height, self.view_matrix,
@@ -280,6 +460,7 @@ class FrankaPandaEnvRosVisual(FrankaPandaEnv):
                                      renderer=self.bc.ER_BULLET_HARDWARE_OPENGL,
                                      flags=self.bc.ER_SEGMENTATION_MASK_OBJECT_AND_LINKINDEX)
         color = cv2.cvtColor(np.array(img[2]), cv2.COLOR_RGB2BGR)
+        color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
         depth = self.camera_far * self.camera_near / (
                 self.camera_far - (self.camera_far - self.camera_near) * np.array(img[3]))
         # depth = np.where(depth >= self.camera_far, np.zeros_like(depth), depth)
