@@ -79,11 +79,15 @@ class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
         self.video_step = 0 
         
         # camera parameters
-        self.camera_width = 640
-        self.camera_height = 480
+        self.camera_width = 800
+        self.camera_height = 800
+        self.camera_fovx = np.pi / 2
+        self.camera_fovy = np.pi / 2
+        self.focal_x = (self.camera_width / 2) / (np.tan(self.camera_fovx / 2))
+        self.focal_y = (self.camera_height / 2) / (np.tan(self.camera_fovy / 2))
         self.camera_near = 0.02
         self.camera_far = 5.00
-        self.K = np.array([[606., 0., 320.], [0., 606., 240], [0., 0., 1.]])
+        self.K = np.array([[self.focal_x, 0., self.camera_width / 2], [0., self.focal_y, self.camera_height / 2], [0., 0., 1.]])
         self.projection_matrix = np.array([
             [2 / self.camera_width * self.K[0, 0], 0, (self.camera_width - 2 * self.K[0, 2]) / self.camera_width, 0],
             [0, 2 / self.camera_height * self.K[1, 1], (2 * self.K[1, 2] - self.camera_height) / self.camera_height, 0],
