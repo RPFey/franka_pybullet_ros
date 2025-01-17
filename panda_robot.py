@@ -40,7 +40,7 @@ class FrankaPanda:
             self.bc.enableJointForceTorqueSensor(self.robot_id, self.joints[i], 1)
 
         # bring the robot to its home position
-        self.home_joint = [0, 0, 0, -1.57079, 0, 1.57079, -0.7853, 0.04, 0.04]
+        self.home_joint = [0, 0, 0, -1.57079, 0, 1.57079, -0.7853, 0.05, 0.05]
         self.reset_state()
 
         # initialize the gripper
@@ -136,7 +136,7 @@ class FrankaPanda:
             else:
                 self.gripper_target_reached = False
 
-            if joint_torque.min() <= -50.:
+            if joint_torque.min() <= -40.:
                 self.gripper_moving = False
 
         if not self.gripper_moving:
@@ -154,7 +154,7 @@ class FrankaPanda:
                 self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
                                               jointIndices=self.joints[-2:],
                                               controlMode=p.TORQUE_CONTROL,
-                                              forces=[100, 100])
+                                              forces=[150, 150])
             
         elif self.gripper_moving:
             self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
@@ -173,7 +173,7 @@ class FrankaPanda:
             self.gripper_opening = True
             self.gripper_moving = True
             self.gripper_target_reached = False
-            self.gripper_target_pos = [0.04, 0.04]
+            self.gripper_target_pos = [0.05, 0.05]
 
         if self.gripper_moving:
             joint_states = self.bc.getJointStates(self.robot_id, self.joints[-2:])
@@ -181,7 +181,7 @@ class FrankaPanda:
             joint_torque = np.array([state[3] for state in joint_states])
             self.gripper_target_pos = joint_pos
 
-            if np.linalg.norm(joint_pos - np.array([0.04, 0.04])) < 1e-4:
+            if np.linalg.norm(joint_pos - np.array([0.05, 0.05])) < 1e-4:
                 self.gripper_moving = False
                 self.gripper_target_reached = True
             else:
@@ -192,7 +192,7 @@ class FrankaPanda:
 
         if not self.gripper_moving:
             if self.gripper_target_reached:
-                self.gripper_target_pos = [0.04, 0.04]
+                self.gripper_target_pos = [0.05, 0.05]
             self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
                                               jointIndices=self.joints[-2:],
                                               controlMode=p.POSITION_CONTROL,

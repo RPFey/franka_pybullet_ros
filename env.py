@@ -33,7 +33,7 @@ class FrankaPandaEnv:
         if object_from_list:
             self.add_ycb_objects_from_list(self.object_list)
         elif object_from_sdf:
-            self.add_ycb_objects_from_sdf('./grasp_sdf_env/layout_1.sdf')
+            self.add_ycb_objects_from_sdf('./grasp_sdf_env/clutter.sdf')
 
         self.controller = controller
         self.include_gripper = include_gripper
