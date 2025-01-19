@@ -52,6 +52,7 @@ class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
 
         rospy.init_node('franka_physics', anonymous=True)
         rospy.Subscriber('/joint', JointState, self.get_joint_input)
+        self.reset_env_src = rospy.Service('/reset_env', Trigger, self.resetEnvCb) 
         self.close_gripper_srv =  rospy.Service("/close_gripper", Trigger, self.closeGripperCb)
         self.open_gripper_srv =  rospy.Service("/open_gripper", Trigger, self.openGripperCb)
         self.color_image_publisher = rospy.Publisher('/camera/rgb/image_raw', Image, queue_size=10)
@@ -202,6 +203,13 @@ class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
         
         # depth = np.where(depth >= self.camera_far, np.zeros_like(depth), depth)
         return color, depth
+    
+    def resetEnvCb(self, req):
+        res = TriggerResponse()
+        self.reset()
+        res.success = True
+        res.message = "Success"
+        return res
         
     def closeGripperCb(self, req):
         res = TriggerResponse()

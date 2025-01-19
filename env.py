@@ -3,7 +3,7 @@ import pkgutil
 import pybullet as p
 import pybullet_data
 
-from panda_robot import FrankaPanda
+from panda_robot import FrankaPanda # type: ignore
 import pybullet_utils.bullet_client as bc
 
 
@@ -37,6 +37,9 @@ class FrankaPandaEnv:
 
         self.controller = controller
         self.include_gripper = include_gripper
+        self.simple_model = simple_model
+        self.object_from_list = object_from_list
+        self.object_from_sdf = object_from_sdf
         self.panda_robot = FrankaPanda(self.bc, include_gripper=include_gripper, simple_model=simple_model)
 
     def simulate_step(self):
@@ -87,3 +90,27 @@ class FrankaPandaEnv:
         self.object_id += object_id_temp
 
         self.bc.configureDebugVisualizer(self.bc.COV_ENABLE_RENDERING, 1)
+    
+    def remove_objects(self):
+        for obj in self.object_id:
+            self.bc.removeBody(obj)
+        self.object_id = []
+    
+    def reset(self):
+        # Reset the simulation
+        # self.bc.resetSimulation()
+        self.bc.setGravity(0, 0, -9.81)
+        self.bc.setTimeStep(1 / self.frequency)
+
+        # self.panda_robot = FrankaPanda(self.bc, include_gripper=self.include_gripper, simple_model=self.simple_model)
+        self.panda_robot.reset_state()
+        self.panda_robot.open_gripper()
+
+        
+        self.remove_objects()
+        # Reload objects
+        self.object_id = []
+        if self.object_from_list:
+            self.add_ycb_objects_from_list(self.object_list)
+        elif self.object_from_sdf:
+            self.add_ycb_objects_from_sdf('./grasp_sdf_env/layout_1.sdf')
