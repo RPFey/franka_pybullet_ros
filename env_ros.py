@@ -45,7 +45,7 @@ def quaternion_from_matrix(R, strict_check=True):
 
 class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
     def __init__(self, connection_mode=p.GUI, frequency=1000., controller='position',
-                 include_gripper=True, simple_model=False, object_from_sdf=False, object_from_list=False):
+                 include_gripper=True, simple_model=False, object_from_sdf=None, object_from_list=None):
         super().__init__(connection_mode=connection_mode, frequency=frequency, controller=controller,
                          include_gripper=include_gripper, simple_model=simple_model,
                          object_from_sdf=object_from_sdf, object_from_list=object_from_list)

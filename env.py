@@ -10,7 +10,7 @@ import pybullet_utils.bullet_client as bc
 class FrankaPandaEnv:
     def __init__(self, connection_mode=p.GUI, frequency=1000., controller='position',
                  include_gripper=True, simple_model=False,
-                 object_from_sdf=False, object_from_list=False):
+                 object_from_sdf=None, object_from_list=None):
 
         self.bc = bc.BulletClient(connection_mode)
         egl = pkgutil.get_loader('eglRenderer')
@@ -33,7 +33,7 @@ class FrankaPandaEnv:
         if object_from_list:
             self.add_ycb_objects_from_list(self.object_list)
         elif object_from_sdf:
-            self.add_ycb_objects_from_sdf('./grasp_sdf_env/clutter.sdf')
+            self.add_ycb_objects_from_sdf(object_from_sdf)
 
         self.controller = controller
         self.include_gripper = include_gripper
