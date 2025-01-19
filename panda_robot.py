@@ -1,5 +1,6 @@
 import pybullet as p
 import numpy as np
+import time
 
 
 class FrankaPanda:
@@ -63,12 +64,19 @@ class FrankaPanda:
         self.joint_effort = [0.] * self.dof
 
     def reset_state(self):
-        for i in range(len(self.joints)):
-            self.bc.resetJointState(self.robot_id, self.joints[i], targetValue=self.home_joint[i])
-        self.bc.setJointMotorControlArray(bodyUniqueId=self.robot_id,
-                                          jointIndices=self.joints[:self.dof],
-                                          controlMode=self.bc.VELOCITY_CONTROL,
-                                          forces=[0. for _ in self.joints[:self.dof]])
+        print(f"self.joins: {self.joints}")
+        print(f"getNumJoints: {self.bc.getNumJoints(self.robot_id)}")
+        for i in range(self.bc.getNumJoints(self.robot_id)):
+            self.bc.resetJointState(self.robot_id, i, targetValue=self.home_joint[i])
+        # breakpoint()
+        time.sleep(1)
+        for i in range(self.bc.getNumJoints(self.robot_id)):
+            print(f"Resetting joint {i}")
+            self.bc.setJointMotorControl2(self.robot_id, i, self.bc.VELOCITY_CONTROL, force=0)
+        # self.bc.setJointMotorControlArray(bodyUniqueId=self.robot_id,
+        #                                   jointIndices=self.joints[:self.dof],
+        #                                   controlMode=self.bc.VELOCITY_CONTROL,
+        #                                   forces=[0. for _ in self.joints[:self.dof]])
 
     def get_pos_vel_force_torque(self):
         joint_states = self.bc.getJointStates(self.robot_id, self.joints)
