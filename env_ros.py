@@ -45,10 +45,10 @@ def quaternion_from_matrix(R, strict_check=True):
 
 class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
     def __init__(self, connection_mode=p.GUI, frequency=1000., controller='position',
-                 include_gripper=True, simple_model=False, object_from_sdf=None, object_from_list=None):
+                 include_gripper=True, simple_model=False, object_from_sdf=None, object_from_list=None, remove_box=False):
         super().__init__(connection_mode=connection_mode, frequency=frequency, controller=controller,
                          include_gripper=include_gripper, simple_model=simple_model,
-                         object_from_sdf=object_from_sdf, object_from_list=object_from_list)
+                         object_from_sdf=object_from_sdf, object_from_list=object_from_list, remove_box=remove_box)
 
         rospy.init_node('franka_physics', anonymous=True)
         rospy.Subscriber('/joint', JointState, self.get_joint_input)
@@ -79,28 +79,11 @@ class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
         self.static_tf.header.frame_id = "base_link"
         self.video_step = 0 
         
-        # camera parameters
-        self.camera_width = 800
-        self.camera_height = 800
-        self.camera_fovx = np.pi / 2
-        self.camera_fovy = np.pi / 2
-        self.focal_x = (self.camera_width / 2) / (np.tan(self.camera_fovx / 2))
-        self.focal_y = (self.camera_height / 2) / (np.tan(self.camera_fovy / 2))
-        self.camera_near = 0.02
-        self.camera_far = 5.00
-        self.K = np.array([[self.focal_x, 0., self.camera_width / 2], [0., self.focal_y, self.camera_height / 2], [0., 0., 1.]])
-        self.projection_matrix = np.array([
-            [2 / self.camera_width * self.K[0, 0], 0, (self.camera_width - 2 * self.K[0, 2]) / self.camera_width, 0],
-            [0, 2 / self.camera_height * self.K[1, 1], (2 * self.K[1, 2] - self.camera_height) / self.camera_height, 0],
-            [0, 0, (self.camera_near + self.camera_far) / (self.camera_near - self.camera_far),
-             2 * self.camera_near * self.camera_far / (self.camera_near - self.camera_far)],
-            [0, 0, -1, 0]]).T
         self.camera_info_msg = CameraInfo()
         self.camera_info_msg.width = self.camera_width
         self.camera_info_msg.height = self.camera_height
         self.camera_info_msg.K = self.K.reshape(-1).astype(float).tolist()
         self.camera_info_msg.header.frame_id = "camera_color_frame"
-        # self.camera_info_msg.header.stamp = rospy.get_rostime()
         self.camera_info_msg.D = [0, 0, 0, 0, 0]
         self.camera_info_msg.P = self.projection_matrix[:3, :].reshape(-1).tolist()
         self.camera_info_msg.distortion_model = "plumb_bob"
@@ -246,6 +229,7 @@ class FrankaPandaEnvRosPhysics(FrankaPandaEnv):
             self.simulate_step()
             # print("Physics: ", 1 / (time.time() - start))
             # self.panda_robot.print_gripper_torque()
+            
         self.bc.disconnect()
         print("Physics simulation end")
 

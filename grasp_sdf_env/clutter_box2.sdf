@@ -1,10 +1,9 @@
 <sdf version="1.6">
   <world name="default">
   <gravity>0 0 -9.8</gravity>
-  	
+
     <model name="Box">
-    <!-- <pose frame=''>-0.33615 0.02794 0.07 1.57 0 0</pose> -->
-      <pose frame=''>-0.33615 0.02794 0.10 1.57 0 0</pose>
+      <pose frame=''>-0.39615 0.03794 0.10 1.57 0 0</pose>
       <static>1</static>
       <link name="baselink">
         <contact>
@@ -28,30 +27,30 @@
         <visual name="visual">
             <geometry>
                 <mesh>
-                    <scale>0.008 0.005 0.01</scale>
+                    <scale>0.008 0.005 0.012</scale>
                     <uri>../ycb_objects/OpenBox/open-cardboard-box.obj</uri>
                 </mesh>
             </geometry>
             <material>
-      				<ambient>1 1 1 1</ambient>
-      				<diffuse>1.00000 1.00000 1.000000 1</diffuse>
-      				<specular>.5 .5 .5 1</specular>
-      				<emissive>0 0 0 0</emissive>
-      			</material>
+              <ambient>1 1 1 1</ambient>
+              <diffuse>1.00000 1.00000 1.000000 1</diffuse>
+              <specular>.5 .5 .5 1</specular>
+              <emissive>0 0 0 0</emissive>
+            </material>
         </visual>
         <collision name="collision" concave="yes">
             <geometry>
                 <mesh>
-                    <scale>0.008 0.005 0.01</scale>
+                    <scale>0.008 0.005 0.012</scale>
                     <uri>../ycb_objects/OpenBox/open-cardboard-box.obj</uri>
                 </mesh>
             </geometry>
         </collision>
       </link>
-  	</model>
+    </model>
 
     <model name="YcbMustardBottle">
-      <pose frame=''>-0.33615 0.02794 0.25 0 0 1.9390639</pose>
+      <pose frame=''>-0.37615 0.03794 0.25 0 0 1.9390639</pose>
       <link name="baselink">
         <contact>
           <lateral_friction>0.8</lateral_friction>
@@ -98,7 +97,7 @@
     </model>
 
     <model name="YcbPottedMeatCan">
-      <pose frame=''>-0.23615 0.02794 0.25 0 0 -1.7217114</pose>
+      <pose frame=''>-0.27615 0.03794 0.25 0 0 -1.7217114</pose>
       <link name="baselink">
          <contact>
           <lateral_friction>0.6</lateral_friction>
@@ -143,54 +142,55 @@
       </link>
     </model>
 
-    <model name="YcbBanana">
-      <pose frame=''>-0.18615 0.02794 0.35 0 0.14 -2.9845</pose>
+    <model name="YcbTomatoSoupCan">
+      <pose frame=''>-0.2361526 0.09094 0.26 0 0 -0.5236056 </pose>
       <link name="baselink">
-        <contact>
-          <lateral_friction>0.3</lateral_friction>
-          <rolling_friction>0.001</rolling_friction>
-          <contact_cfm>0.0</contact_cfm>
-          <contact_erp>1.0</contact_erp>
-        </contact>
-        <inertial>
-          <pose frame=''>0.01 0.0 0.01 0.0 0.0 0.0</pose>
-          <mass>0.066</mass>
-          <inertia>
-            <ixx>1e-3</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1e-3</iyy>
-            <iyz>0</iyz>
-            <izz>1e-3</izz>
-          </inertia>
-        </inertial>
-        <visual name="visual">
-          <geometry>
-            <mesh>
-              <scale>1 1 1</scale>
-              <uri>../ycb_objects/YcbBanana/textured_simple_reoriented.obj</uri>
-            </mesh>
-          </geometry>
-          <material>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1.00000 1.00000 1.000000 1</diffuse>
-            <specular>.5 .5 .5 1</specular>
-            <emissive>0 0 0 0</emissive>
-          </material>
-        </visual>
-        <collision name="collision">
-          <geometry>
-            <mesh>
-              <scale>1 1 1</scale>
-              <uri>../ycb_objects/YcbBanana/collision_vhacd.obj</uri>
-            </mesh>
-          </geometry>
-        </collision>
+          <contact>
+            <lateral_friction>0.6</lateral_friction>
+            <rolling_friction>0.001</rolling_friction>
+            <spinning_friction>0.001</spinning_friction>
+            <contact_cfm>0.0</contact_cfm>
+            <contact_erp>1.0</contact_erp>
+          </contact>
+          <inertial>
+            <pose frame=''>0 0.0 -0.02 0.0 0.0 0.0</pose>
+            <mass>0.349</mass>
+            <inertia>
+                <ixx>1e-3</ixx>
+                <ixy>0</ixy>
+                <ixz>0</ixz>
+                <iyy>1e-3</iyy>
+                <iyz>0</iyz>
+                <izz>1e-3</izz>
+            </inertia>
+          </inertial>
+          <visual name="visual">
+              <geometry>
+                  <mesh>
+                      <scale>1 1 1</scale>
+                      <uri>../ycb_objects/YcbTomatoSoupCan/textured_simple_reoriented.obj</uri>
+                  </mesh>
+              </geometry>
+              <material>
+                <ambient>1 1 1 1</ambient>
+                <diffuse>1.00000 1.00000 1.000000 1</diffuse>
+                <specular>.5 .5 .5 1</specular>
+                <emissive>0 0 0 0</emissive>
+              </material>
+          </visual>
+          <collision name="collision">
+              <geometry>
+                  <mesh>
+                      <scale>1 1 1</scale>
+                      <uri>../ycb_objects/YcbTomatoSoupCan/collision_vhacd.obj</uri>
+                  </mesh>
+              </geometry>
+          </collision>
       </link>
     </model>
 
     <model name="YcbChipsCan">
-      <pose frame=''>-0.28615 0.24794 0.45 0 0 -1.7216858</pose>
+      <pose frame=''>-0.32615 0.25794 0.45 0 0 -1.7216858</pose>
       <link name="baselink">
         <contact>
           <lateral_friction>0.5</lateral_friction>
@@ -236,19 +236,19 @@
       </link>
   	</model>
 
-    <model name="YcbChipsCan2">
-      <pose frame=''>-0.28615 0.04794 0.45 0 0 -1.7216858</pose>
+    <model name="YcbTennisBall">
+      <pose frame=''>-0.18479 -0.08116 0.3 0 0 1.9444334</pose>
       <link name="baselink">
         <contact>
-          <lateral_friction>0.5</lateral_friction>
+          <lateral_friction>0.8</lateral_friction>
           <rolling_friction>0.001</rolling_friction>
           <spinning_friction>0.001</spinning_friction>
           <contact_cfm>0.0</contact_cfm>
           <contact_erp>1.0</contact_erp>
         </contact>
         <inertial>
-          <pose frame=''>-0.005 0.01 0.1 0.0 0.0 0.0</pose>
-            <mass>0.205</mass>
+          <pose frame=''>0.0 0.005 0.03 0.0 0.0 0.0</pose>
+            <mass>0.058</mass>
             <inertia>
                 <ixx>1e-3</ixx>
                 <ixy>0</ixy>
@@ -262,7 +262,7 @@
             <geometry>
                 <mesh>
                     <scale>1 1 1</scale>
-                    <uri>../ycb_objects/YcbChipsCan/textured.obj</uri>
+                    <uri>../ycb_objects/YcbTennisBall/textured_reoriented.obj</uri>
                 </mesh>
             </geometry>
             <material>
@@ -276,15 +276,156 @@
             <geometry>
                 <mesh>
                     <scale>1 1 1</scale>
-                    <uri>../ycb_objects/YcbChipsCan/collision_vhacd.obj</uri>
+                    <uri>../ycb_objects/YcbTennisBall/collision_vhacd.obj</uri>
                 </mesh>
             </geometry>
         </collision>
       </link>
   	</model>
+
+    <model name="YcbStrawberry">
+      <pose frame=''>-0.1961526 0.21094 0. 0 0 -0.5236056</pose>
+      <link name="baselink">
+        <contact>
+          <lateral_friction>0.5</lateral_friction>
+          <rolling_friction>0.001</rolling_friction>
+          <spinning_friction>0.001</spinning_friction>
+          <contact_cfm>0.0</contact_cfm>
+          <contact_erp>1.0</contact_erp>
+        </contact>
+        <inertial>
+          <pose frame=''>-0.005 0.005 0.02 0.0 0.0 0.0</pose>
+            <mass>0.018</mass>
+            <inertia>
+                <ixx>1e-3</ixx>
+                <ixy>0</ixy>
+                <ixz>0</ixz>
+                <iyy>1e-3</iyy>
+                <iyz>0</iyz>
+                <izz>1e-3</izz>
+            </inertia>
+        </inertial>
+        <visual name="visual">
+            <geometry>
+                <mesh>
+                    <scale>1 1 1</scale>
+                    <uri>../ycb_objects/YcbStrawberry/textured_reoriented.obj</uri>
+                </mesh>
+            </geometry>
+            <material>
+      				<ambient>1 1 1 1</ambient>
+      				<diffuse>1.00000 1.00000 1.000000 1</diffuse>
+      				<specular>.5 .5 .5 1</specular>
+      				<emissive>0 0 0 0</emissive>
+      			</material>
+        </visual>
+        <collision name="collision">
+            <geometry>
+                <mesh>
+                    <scale>1 1 1</scale>
+                    <uri>../ycb_objects/YcbStrawberry/collision_vhacd.obj</uri>
+                </mesh>
+            </geometry>
+        </collision>
+      </link>
+  	</model>
+
+    <model name="YcbPear">
+      <pose frame=''>-0.2761526 0.12794 0.0 0.5355226 0 0</pose>
+      <link name="baselink">
+        <contact>
+          <lateral_friction>0.6</lateral_friction>
+          <rolling_friction>0.001</rolling_friction>
+          <spinning_friction>0.001</spinning_friction>
+          <contact_cfm>0.0</contact_cfm>
+          <contact_erp>1.0</contact_erp>
+        </contact>
+        <inertial>
+          <pose frame=''>0 0.005 0.04 0.0 0.0 0.0</pose>
+            <mass>0.049</mass>
+            <inertia>
+                <ixx>1e-3</ixx>
+                <ixy>0</ixy>
+                <ixz>0</ixz>
+                <iyy>1e-3</iyy>
+                <iyz>0</iyz>
+                <izz>1e-3</izz>
+            </inertia>
+        </inertial>
+        <visual name="visual">
+            <geometry>
+                <mesh>
+                    <scale>1 1 1</scale>
+                    <uri>../ycb_objects/YcbPear/textured_reoriented.obj</uri>
+                </mesh>
+            </geometry>
+            <material>
+      				<ambient>1 1 1 1</ambient>
+      				<diffuse>1.00000 1.00000 1.000000 1</diffuse>
+      				<specular>.5 .5 .5 1</specular>
+      				<emissive>0 0 0 0</emissive>
+      			</material>
+        </visual>
+        <collision name="collision">
+            <geometry>
+                <mesh>
+                    <scale>1 1 1</scale>
+                    <uri>../ycb_objects/YcbPear/collision_vhacd.obj</uri>
+                </mesh>
+            </geometry>
+        </collision>
+      </link>
+  	</model>
+
+    <model name="YcbPowerDrill">
+      <pose frame=''>-0.41456 0.21899 0. 0 0 -0.5236056</pose>
+      <link name="baselink">
+          <contact>
+            <lateral_friction>0.9</lateral_friction>
+            <rolling_friction>0.001</rolling_friction>
+            <spinning_friction>0.001</spinning_friction>
+            <contact_cfm>0.0</contact_cfm>
+            <contact_erp>1.0</contact_erp>
+          </contact>
+          <inertial>
+              <pose frame=''>-0.005 0.01 0.06 0 0 0.6</pose>
+              <mass>0.895</mass>
+              <inertia>
+                  <ixx>1e-3</ixx>
+                  <ixy>0</ixy>
+                  <ixz>0</ixz>
+                  <iyy>1e-3</iyy>
+                  <iyz>0</iyz>
+                  <izz>1e-3</izz>
+              </inertia>
+          </inertial>
+          <visual name="visual">
+              <geometry>
+                  <mesh>
+                      <scale>1 1 1</scale>
+                      <uri>../ycb_objects/YcbPowerDrill/textured_simple_reoriented.obj</uri>
+                  </mesh>
+              </geometry>
+              <material>
+                <ambient>1 1 1 1</ambient>
+                <diffuse>1.00000 1.00000 1.000000 1</diffuse>
+                <specular>.5 .5 .5 1</specular>
+                <emissive>0 0 0 0</emissive>
+              </material>
+          </visual>
+          <collision name="collision">
+              <geometry>
+                  <mesh>
+                      <scale>1 1 1</scale>
+                      <uri>../ycb_objects/YcbPowerDrill/collision_vhacd.obj</uri>
+                  </mesh>
+              </geometry>
+          </collision>
+      </link>
+    </model>
 
     <model name="YcbMediumClamp">
-      <pose frame=''>-0.12615 0.04794 0.35 0 0 0</pose>
+      <pose frame=''>-0.16615 0.05794 0.35 0 0 0</pose>
       <link name="baselink">
         <contact>
           <lateral_friction>0.6</lateral_friction>
@@ -330,10 +471,8 @@
       </link>
   	</model>
 
-    
-
     <model name="YcbFoamBrick">
-      <pose frame=''>-0.13615 0.02794 0.20 0 0 0</pose>
+      <pose frame=''>-0.17615 0.03794 0.20 0 0 0</pose>
       <link name="baselink">
         <contact>
           <lateral_friction>0.5</lateral_friction>

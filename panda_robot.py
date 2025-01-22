@@ -2,6 +2,9 @@ import pybullet as p
 import numpy as np
 import time
 
+# get current directory
+import os
+dir_path = os.path.dirname(__file__)
 
 class FrankaPanda:
     def __init__(self, bc, include_gripper=False, simple_model=False):
@@ -10,7 +13,7 @@ class FrankaPanda:
 
         # bring up the robot's URDF
         self.bc.configureDebugVisualizer(self.bc.COV_ENABLE_RENDERING, 0)
-        self.bc.setAdditionalSearchPath('./model_description')
+        self.bc.setAdditionalSearchPath(os.path.join(dir_path, 'model_description'))
         panda_model = "panda.urdf" if include_gripper else "panda_nohand.urdf"
         flags = (self.bc.URDF_USE_INERTIA_FROM_FILE | self.bc.URDF_ENABLE_CACHED_GRAPHICS_SHAPES
                  | self.bc.URDF_USE_SELF_COLLISION | self.bc.URDF_USE_SELF_COLLISION_EXCLUDE_PARENT)
@@ -135,7 +138,6 @@ class FrankaPanda:
             joint_states = self.bc.getJointStates(self.robot_id, self.joints[-2:])
             joint_pos = np.array([state[0] for state in joint_states])
             joint_torque = np.array([state[3] for state in joint_states])
-            print("Torque : ", joint_torque)
             self.gripper_target_pos = joint_pos
 
             if np.linalg.norm(joint_pos) < 1e-4:
