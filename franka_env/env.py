@@ -91,7 +91,7 @@ class FrankaPandaEnv:
                                          basePosition=[0.5, 0, -0.65], useFixedBase=True)
         self.box_id = self.bc.loadURDF(os.path.join(ycb_database, "OpenBox/box.urdf"),
                                         basePosition=[0.36, -0.15, -0.02], useFixedBase=True)
-
+        self.bc.setAdditionalSearchPath(os.path.join(dirname, "grasp_sdf_env"))
         obj_idx = np.arange(len(object_list))
         np.random.shuffle(obj_idx)
         obj_idx = obj_idx[:object_num]
@@ -99,7 +99,8 @@ class FrankaPandaEnv:
         print("Loading objects from a list")
         for i in obj_idx:
             obj = object_list[i]
-            self.add_urdf_object(os.path.join(ycb_database,  obj,  "/model.urdf"))
+            self.bc.setAdditionalSearchPath(os.path.join(ycb_database,  obj))
+            self.add_urdf_object(os.path.join(ycb_database,  obj,  "model.urdf"))
             self.wait_for_objects_to_rest()
                 
         if self.remove_box:
