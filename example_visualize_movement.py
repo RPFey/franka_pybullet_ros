@@ -1,8 +1,8 @@
 import time
 import pybullet as p
 
-from panda_robot import FrankaPanda
-from bullet_client import BulletClient
+from franka_env.panda_robot import FrankaPanda
+from franka_env.bullet_client import BulletClient
 from movement_datasets import read_fep_dataset
 
 INCLUDE_GRIPPER = True

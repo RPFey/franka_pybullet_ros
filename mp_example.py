@@ -2,7 +2,7 @@ import multiprocessing as mp
 import time
 import cv2
 import numpy as np
-from env_mp import run_physics, run_visual
+from franka_env.env_mp import run_physics, run_visual
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')  # Use 'spawn' method on Windows

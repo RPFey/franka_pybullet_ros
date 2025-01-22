@@ -1,4 +1,4 @@
-from env_ros import FrankaPandaEnvRosPhysics
+from franka_env.env_ros import FrankaPandaEnvRosPhysics
 import pybullet as p
 import argparse
 

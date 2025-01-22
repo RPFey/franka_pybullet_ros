@@ -10,7 +10,7 @@ from sensor_msgs.msg import JointState, Image, CameraInfo
 import cv2
 import numpy as np
 import pybullet as p
-from env import FrankaPandaEnv
+from franka_env.env import FrankaPandaEnv
 
 def quaternion_from_matrix(R, strict_check=True):
     q = np.empty(4)

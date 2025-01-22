@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import pybullet as p
 from scipy.spatial.transform import Rotation as sciR
-from env import FrankaPandaEnv
+from franka_env.env import FrankaPandaEnv
 
 def quaternion_from_matrix(R, strict_check=True):
     q = np.empty(4)
@@ -124,8 +124,9 @@ def run_simulation(object_from_sdf, object_from_list,
                             gripper, camera_pose, ee_pose, 
                                 image_rgb, image_depth, stop):
     
+    frequency = 1000.
     env = FrankaPandaEnvPhysics(connection_mode=p.GUI,
-                                frequency=1000.,
+                                frequency=frequency,
                                 controller='position',
                                 include_gripper=True,
                                 simple_model=True,
@@ -136,7 +137,7 @@ def run_simulation(object_from_sdf, object_from_list,
     joint_input_np_array = np.frombuffer(joint_input.get_obj(), dtype=np.float32)
     joint_input_np_array[:env.panda_robot.dof] = env.panda_robot.home_joint[:env.panda_robot.dof]
     # set to none
-    gripper.value = 2
+    gripper.value = 0
         
     while stop.value == 0:
         with joint_input.get_lock():
@@ -144,10 +145,10 @@ def run_simulation(object_from_sdf, object_from_list,
             
         env.current_joint_input[:] = np.array(joint_input)
         
-        if gripper.value == 1:
-            env.panda_robot.close_gripper()
-        elif gripper.value == 0:
+        if gripper.value == 0:
             env.panda_robot.open_gripper()
+        else:
+            env.panda_robot.close_gripper()
         
         env.simulate_step()
         
@@ -188,7 +189,8 @@ def run_simulation(object_from_sdf, object_from_list,
             ee_pose_np_array[3, :3] = 0.
             ee_pose_np_array[3, 3] = 1.
             
-    
+        time.sleep(1 / frequency)
+            
     env.bc.disconnect()
     print("Simulation end")
         

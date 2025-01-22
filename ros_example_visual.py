@@ -1,4 +1,4 @@
-from env_ros import FrankaPandaEnvRosVisual
+from franka_env.env_ros import FrankaPandaEnvRosVisual
 import pybullet as p
 
 env = FrankaPandaEnvRosVisual(connection_mode=p.GUI,

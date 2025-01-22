@@ -4,7 +4,7 @@ import time
 
 # get current directory
 import os
-dir_path = os.path.dirname(__file__)
+dir_path = os.path.join(os.path.dirname(__file__), "..")
 
 class FrankaPanda:
     def __init__(self, bc, include_gripper=False, simple_model=False):
@@ -134,10 +134,10 @@ class FrankaPanda:
             self.gripper_target_reached = False
             self.gripper_target_pos = [0., 0.]
 
+        joint_states = self.bc.getJointStates(self.robot_id, self.joints[-2:])
+        joint_pos = np.array([state[0] for state in joint_states])
+        joint_torque = np.array([state[3] for state in joint_states])
         if self.gripper_moving:
-            joint_states = self.bc.getJointStates(self.robot_id, self.joints[-2:])
-            joint_pos = np.array([state[0] for state in joint_states])
-            joint_torque = np.array([state[3] for state in joint_states])
             self.gripper_target_pos = joint_pos
 
             if np.linalg.norm(joint_pos) < 1e-4:
@@ -170,7 +170,7 @@ class FrankaPanda:
             self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
                                               jointIndices=self.joints[-2:],
                                               controlMode=p.VELOCITY_CONTROL,
-                                              targetVelocities=[-0.10, -0.10],
+                                              targetVelocities=[-0.025, -0.025],
                                               forces=[70, 70])
 
     def open_gripper(self):

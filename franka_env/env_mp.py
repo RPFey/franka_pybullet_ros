@@ -3,7 +3,7 @@ import sys
 import time
 import numpy as np
 import pybullet as p
-from env import FrankaPandaEnv
+from franka_env.env import FrankaPandaEnv
 
 
 class HideOutput(object):

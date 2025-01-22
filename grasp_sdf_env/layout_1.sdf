@@ -2,7 +2,7 @@
   <world name="default">
   <gravity>0 0 -9.8</gravity>
   	<model name="YcbHammer">
-      <pose frame=''>-0.33615 0.01794 0.0 0 0 1.57</pose>
+      <pose frame=''>-0.38615 0.01794 0.0 0 0 1.57</pose>
       <link name="baselink">
         <contact>
           <lateral_friction>0.3</lateral_friction>
@@ -47,7 +47,7 @@
       </link>
   	</model>
   	<model name="YcbTennisBall">
-      <pose frame=''>-0.05479 0.16116 0.0 0 0 1.9444334</pose>
+      <pose frame=''>-0.10479 0.16116 0.0 0 0 1.9444334</pose>
       <link name="baselink">
         <contact>
           <lateral_friction>0.8</lateral_friction>
@@ -93,7 +93,7 @@
       </link>
   	</model>
   	<model name="YcbChipsCan">
-      <pose frame=''>-0.25920 0.30439 0.0 0 0 -1.7217267</pose>
+      <pose frame=''>-0.30920 0.30439 0.0 0 0 -1.7217267</pose>
       <link name="baselink">
         <contact>
           <lateral_friction>0.5</lateral_friction>
@@ -139,7 +139,7 @@
       </link>
   	</model>
 	  <model name="YcbBanana">
-      <pose frame=''>-0.5 0.28849 0.0 0 0 -1.5707963</pose>
+      <pose frame=''>-0.55 0.28849 0.0 0 0 -1.5707963</pose>
       <link name="baselink">
         <contact>
           <lateral_friction>0.3</lateral_friction>
@@ -184,7 +184,7 @@
       </link>
   	</model>
     <model name="YcbMustardBottle">
-        <pose frame=''>-0.39456 0.16899 0.07 0 0 0</pose>
+        <pose frame=''>-0.43456 0.16899 0.07 0 0 0</pose>
         <link name="baselink">
         <contact>
           <lateral_friction>0.8</lateral_friction>
@@ -230,7 +230,7 @@
         </link>
     </model>
     <model name="YcbPottedMeatCan">
-          <pose frame=''>-0.110 0.04439 0.047 0 0 -1.5707963</pose>
+          <pose frame=''>-0.160 0.04439 0.047 0 0 -1.5707963</pose>
           <link name="baselink">
         <contact>
           <lateral_friction>0.6</lateral_friction>
@@ -275,7 +275,7 @@
           </link>
       </model>
       <model name="YcbCrackerBox">
-          <pose frame=''>-0.18920 0.19439 0.15 0 0 -0.785</pose>
+          <pose frame=''>-0.23920 0.19439 0.15 0 0 -0.785</pose>
           <link name="baselink">
         <contact>
           <lateral_friction>0.5</lateral_friction>

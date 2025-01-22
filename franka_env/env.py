@@ -4,12 +4,12 @@ import pybullet as p
 import pybullet_data
 from scipy.spatial.transform import Rotation as sciR
 
-from panda_robot import FrankaPanda # type: ignore
+from franka_env.panda_robot import FrankaPanda # type: ignore
 import pybullet_utils.bullet_client as bc
 import numpy as np
 
 dirname = os.path.dirname(__file__)
-ycb_database = os.path.join(dirname, "ycb_objects")
+ycb_database = os.path.join(dirname, "../", "ycb_objects")
 
 class FrankaPandaEnv:
     def __init__(self, connection_mode=p.GUI, frequency=1000., controller='position',
