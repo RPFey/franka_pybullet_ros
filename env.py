@@ -142,6 +142,8 @@ class FrankaPandaEnv:
         self.bc.configureDebugVisualizer(self.bc.COV_ENABLE_RENDERING, 1)
     
     def remove_objects(self):
+        self.bc.removeBody(self.plane_id)
+        self.bc.removeBody(self.table_id)
         for obj in self.object_id:
             self.bc.removeBody(obj)
         self.object_id = []
