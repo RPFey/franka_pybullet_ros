@@ -119,13 +119,13 @@ class FrankaPandaEnvPhysics(FrankaPandaEnv):
         # depth = np.where(depth >= self.camera_far, np.zeros_like(depth), depth)
         return color, depth
     
-def run_simulation(object_from_sdf, object_from_list,
+def run_simulation(mode, object_from_sdf, object_from_list,
                         joint_input, joint_data, 
                             gripper, camera_pose, ee_pose, 
                                 image_rgb, image_depth, stop):
     
     frequency = 1000.
-    env = FrankaPandaEnvPhysics(connection_mode=p.GUI,
+    env = FrankaPandaEnvPhysics(connection_mode=mode,
                                 frequency=frequency,
                                 controller='position',
                                 include_gripper=True,
@@ -223,7 +223,8 @@ def cvPose2BulletView(t, q):
     return viewMatrix
 
 class FrankaClutter:
-    def __init__(self, object_from_sdf=None, object_from_list=True):
+    def __init__(self, object_from_sdf=None, 
+                        object_from_list=True, gui=False):
         mp.set_start_method('spawn')
     
         image_width = 800 # self._env.camera_width
@@ -231,6 +232,7 @@ class FrankaClutter:
         self.intrinsic = np.array([[400.0, 0.0, 400.],
                                     [0.0, 400.0, 400.],
                                     [0.0, 0.0, 1.0]])
+        mode = p.GUI if gui else p.DIRECT
     
         self._joint_input = mp.Array('f', 7)
         self._joint_data = mp.Array('f', 3 * 9)
@@ -241,7 +243,8 @@ class FrankaClutter:
         self._image_depth = mp.Array('f', image_width * image_height)
         self._stop = mp.Value('i', 0)
         
-        self._process = mp.Process(target=run_simulation, args=(object_from_sdf, object_from_list, 
+        print("Start Env ...")
+        self._process = mp.Process(target=run_simulation, args=(mode, object_from_sdf, object_from_list, 
                                                                 self._joint_input, self._joint_data, 
                                                                 self._gripper, self._camera_pose, self._ee_pose, 
                                                                 self._image_rgb, self._image_depth, self._stop))
@@ -300,11 +303,15 @@ if __name__ == "__main__":
         while True:
             rgb, depth = env.get_image()
             if rgb.max () > 10:
-                cv2.imshow("rgb", rgb)
-                cv2.waitKey(1)
+                # cv2.imshow("rgb", rgb)
+                # cv2.waitKey(1)
                 # raise KeyboardInterrupt()
-                
                 env.close_gripper()
+                print("Gripper closed")
+                break
+            else:
+                print("Wait for init ...")
+                time.sleep(1)
         
     except KeyboardInterrupt:
         env.end()
