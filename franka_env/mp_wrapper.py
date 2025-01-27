@@ -40,11 +40,11 @@ def quaternion_from_matrix(R, strict_check=True):
 class FrankaPandaEnvPhysics(FrankaPandaEnv):
     def __init__(self, connection_mode=p.GUI, frequency=1000., controller='position',
                  include_gripper=True, simple_model=False, 
-                 object_from_sdf=None, object_from_list=None, remove_box=False):
+                 object_from_sdf=None, object_from_list=None, remove_box=False, seed=42):
         
         super().__init__(connection_mode=connection_mode, frequency=frequency, controller=controller,
                          include_gripper=include_gripper, simple_model=simple_model,
-                         object_from_sdf=object_from_sdf, object_from_list=object_from_list, remove_box=remove_box)
+                         object_from_sdf=object_from_sdf, object_from_list=object_from_list, remove_box=remove_box, seed=seed)
 
         if self.controller == 'position':
             self.current_joint_input = self.panda_robot.home_joint[:self.panda_robot.dof]
@@ -122,7 +122,7 @@ class FrankaPandaEnvPhysics(FrankaPandaEnv):
 def run_simulation(object_from_sdf, object_from_list,
                         joint_input, joint_data, 
                             gripper, camera_pose, ee_pose, 
-                                image_rgb, image_depth, stop):
+                                image_rgb, image_depth, stop, seed):
     
     frequency = 1000.
     env = FrankaPandaEnvPhysics(connection_mode=p.GUI,
@@ -130,6 +130,8 @@ def run_simulation(object_from_sdf, object_from_list,
                                 controller='position',
                                 include_gripper=True,
                                 simple_model=True,
+                                remove_box=True,
+                                seed=seed,
                                 object_from_sdf=object_from_sdf,
                                 object_from_list=object_from_list)
     
@@ -223,7 +225,7 @@ def cvPose2BulletView(t, q):
     return viewMatrix
 
 class FrankaClutter:
-    def __init__(self, object_from_sdf=None, object_from_list=True):
+    def __init__(self, object_from_sdf=None, object_from_list=True, seed=42):
         mp.set_start_method('spawn')
     
         image_width = 800 # self._env.camera_width
@@ -244,7 +246,7 @@ class FrankaClutter:
         self._process = mp.Process(target=run_simulation, args=(object_from_sdf, object_from_list, 
                                                                 self._joint_input, self._joint_data, 
                                                                 self._gripper, self._camera_pose, self._ee_pose, 
-                                                                self._image_rgb, self._image_depth, self._stop))
+                                                                self._image_rgb, self._image_depth, self._stop, seed))
         self._process.start()
         
     def get_camera_intrinsic(self):

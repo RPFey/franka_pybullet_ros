@@ -14,10 +14,12 @@ ycb_database = os.path.join(dirname, "../", "ycb_objects")
 class FrankaPandaEnv:
     def __init__(self, connection_mode=p.GUI, frequency=1000., controller='position',
                  include_gripper=True, simple_model=False,
-                 object_from_sdf=None, object_from_list=None, remove_box=False):
+                 object_from_sdf=None, object_from_list=None, 
+                 remove_box=False, seed=42):
 
         self.bc = bc.BulletClient(connection_mode)
         egl = pkgutil.get_loader('eglRenderer')
+        self.rng = np.random.default_rng(seed=seed)
         self.bc.loadPlugin(egl.get_filename(), "eglRendererPlugin")
         self.bc.configureDebugVisualizer(rgbBackground=[33. / 255., 90. / 255., 127. / 255.])
         self.bc.configureDebugVisualizer(self.bc.COV_ENABLE_GUI, 0)
@@ -44,6 +46,7 @@ class FrankaPandaEnv:
         self.object_from_list = object_from_list
         self.object_from_sdf = object_from_sdf
         self.panda_robot = FrankaPanda(self.bc, include_gripper=include_gripper, simple_model=simple_model)
+        
         
         # camera parameters
         self.camera_width = 800
@@ -77,9 +80,8 @@ class FrankaPandaEnv:
 
     def add_urdf_object(self, filename):
         flags = self.bc.URDF_USE_INERTIA_FROM_FILE
-        
-        noise_x = np.random.uniform(-0.05, 0.05)
-        noise_y = np.random.uniform(-0.05, 0.05)
+        noise_x = self.rng.uniform(-0.05, 0.05)
+        noise_y = self.rng.uniform(-0.05, 0.05)
         self.object_id.append(self.bc.loadURDF(filename, [0.5 + noise_x, 0.0 + noise_y, 0.4], flags=flags))
 
     def add_ycb_objects_from_list(self, object_list, object_num=10):
@@ -93,7 +95,8 @@ class FrankaPandaEnv:
                                         basePosition=[0.36, -0.15, -0.02], useFixedBase=True)
         self.bc.setAdditionalSearchPath(os.path.join(dirname, "grasp_sdf_env"))
         obj_idx = np.arange(len(object_list))
-        np.random.shuffle(obj_idx)
+        self.rng.shuffle(obj_idx)
+        # np.random.shuffle(obj_idx)
         obj_idx = obj_idx[:object_num]
 
         print("Loading objects from a list")

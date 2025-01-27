@@ -23,7 +23,7 @@ if __name__ == "__main__":
     image_depth = mp.Array('f', 480 * 640)
 
     process_physics = mp.Process(target=run_physics, args=(
-    joint_input, gripper_input, joint_data, tf, include_gripper, object_from_sdf, object_from_list))
+        joint_input, gripper_input, joint_data, tf, include_gripper, object_from_sdf, object_from_list))
     process_visual = mp.Process(target=run_visual, args=(
         joint_data, tf, image_rgb, image_depth, include_gripper, object_from_sdf, object_from_list))
 
