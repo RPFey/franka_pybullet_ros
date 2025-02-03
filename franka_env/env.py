@@ -34,6 +34,7 @@ class FrankaPandaEnv:
         self.object_list = ["YcbBanana", "YcbPear", "YcbHammer", "YcbScissors", "YcbStrawberry", "YcbChipsCan",
                             "YcbCrackerBox", "YcbFoamBrick", "YcbGelatinBox", "YcbMasterChefCan", "YcbMediumClamp", 
                             "YcbMustardBottle", "YcbPottedMeatCan", "YcbPowerDrill", "YcbTennisBall", "YcbTomatoSoupCan"]
+        self.id2names = {}
 
         if object_from_list:
             self.add_ycb_objects_from_list(self.object_list)
@@ -104,10 +105,12 @@ class FrankaPandaEnv:
             obj = object_list[i]
             self.bc.setAdditionalSearchPath(os.path.join(ycb_database,  obj))
             self.add_urdf_object(os.path.join(ycb_database,  obj,  "model.urdf"))
+            self.id2names[self.object_id[-1]] = obj
             self.wait_for_objects_to_rest()
                 
         if self.remove_box:
             self.bc.removeBody(self.box_id)
+        self.wait_for_objects_to_rest(1e-3, max_step=3000)
         
         np.set_printoptions(precision=4, suppress=True)
         for i, body in zip(obj_idx, self.object_id):
@@ -170,11 +173,12 @@ class FrankaPandaEnv:
         elif self.object_from_sdf:
             self.add_ycb_objects_from_sdf(self.object_from_sdf)
             
-    def wait_for_objects_to_rest(self, tol=0.01):
+    def wait_for_objects_to_rest(self, tol=0.01, max_step=200):
         step = 0
         
+        print("Current Objects: ", len(self.object_id))
         objects_resting = False
-        while not objects_resting and step < 200:
+        while not objects_resting and step < max_step:
             # simulate a quarter of a second
             for _ in range(100):
                 self.bc.stepSimulation()

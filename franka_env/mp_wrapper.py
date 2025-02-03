@@ -5,6 +5,7 @@ import numpy as np
 import pybullet as p
 from scipy.spatial.transform import Rotation as sciR
 from franka_env.env import FrankaPandaEnv
+import os
 
 def quaternion_from_matrix(R, strict_check=True):
     q = np.empty(4)
@@ -119,10 +120,18 @@ class FrankaPandaEnvPhysics(FrankaPandaEnv):
         # depth = np.where(depth >= self.camera_far, np.zeros_like(depth), depth)
         return color, depth
     
+    def print_contact(self):
+
+        for id in self.object_id:
+            contacts = self.bc.getContactPoints(self.panda_robot.robot_id, id)
+            if len(contacts) > 0:
+                print(self.id2names[id] + " is in contact with the hand")
+                break   
+    
 def run_simulation(mode, object_from_sdf, object_from_list,
                         joint_input, joint_data, 
                             gripper, camera_pose, ee_pose, 
-                                image_rgb, image_depth, stop, seed):
+                                image_rgb, image_depth, stop, logdir, seed):
     
     frequency = 1000.
     env = FrankaPandaEnvPhysics(connection_mode=mode,
@@ -140,6 +149,14 @@ def run_simulation(mode, object_from_sdf, object_from_list,
     joint_input_np_array[:env.panda_robot.dof] = env.panda_robot.home_joint[:env.panda_robot.dof]
     # set to none
     gripper.value = 0
+
+    _, _, log_pos, log_orn = env.get_hand_eye()  
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for MP4
+    log_writer = cv2.VideoWriter(os.path.join(logdir, 'output_video.mp4'), fourcc, 15, (800, 800))  # 30 FPS
+    log_pos = log_pos + np.array([0.5, 0.3, -0.2])
+    log_orn_mat = sciR.from_quat(log_orn, scalar_first=False).as_matrix()
+    log_orn_mat = log_orn_mat @ np.array([[0., 0, -1.], [0., 1., 0.], [1., 0., 0.]]) 
+    log_orn = sciR.from_matrix(log_orn_mat).as_quat()
         
     while stop.value == 0:
         with joint_input.get_lock():
@@ -164,6 +181,10 @@ def run_simulation(mode, object_from_sdf, object_from_list,
         if env.video_step == 0: 
             hand_pos, hand_orn, cam_pos, cam_orn = env.get_hand_eye()  
             color, depth = env.get_image(cam_pos, cam_orn)
+            
+            log, _ = env.get_image(log_pos, log_orn)
+            log = cv2.cvtColor(log, cv2.COLOR_RGB2BGR)
+            log_writer.write(log)
             
             with image_rgb.get_lock():
                 image_rgb_np_array = np.frombuffer(image_rgb.get_obj(), dtype=np.int32).reshape((800, 800, 3))
@@ -192,7 +213,11 @@ def run_simulation(mode, object_from_sdf, object_from_list,
             ee_pose_np_array[3, 3] = 1.
             
         time.sleep(1 / frequency)
-            
+    
+    # get the contact body with hand finger
+    env.print_contact()
+    log_writer.release()
+
     env.bc.disconnect()
     print("Simulation end")
         
@@ -225,7 +250,8 @@ def cvPose2BulletView(t, q):
     return viewMatrix
 
 class FrankaClutter:
-    def __init__(self, object_from_sdf=None, object_from_list=True, gui=False, seed=42):
+    def __init__(self, object_from_sdf=None, object_from_list=True, 
+                            gui=False, logdir="./", seed=42):
         mp.set_start_method('spawn')
     
         image_width = 800 # self._env.camera_width
@@ -248,7 +274,7 @@ class FrankaClutter:
         self._process = mp.Process(target=run_simulation, args=(mode, object_from_sdf, object_from_list, 
                                                                 self._joint_input, self._joint_data, 
                                                                 self._gripper, self._camera_pose, self._ee_pose, 
-                                                                self._image_rgb, self._image_depth, self._stop, seed))
+                                                                self._image_rgb, self._image_depth, self._stop, logdir, seed))
         self._process.start()
         
     def get_camera_intrinsic(self):

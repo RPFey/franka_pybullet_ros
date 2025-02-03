@@ -138,8 +138,6 @@ class FrankaPanda:
         joint_pos = np.array([state[0] for state in joint_states])
         joint_torque = np.array([state[3] for state in joint_states])
         if self.gripper_moving:
-            self.gripper_target_pos = joint_pos
-
             if np.linalg.norm(joint_pos) < 1e-4:
                 self.gripper_moving = False
                 self.gripper_target_reached = True
@@ -148,30 +146,19 @@ class FrankaPanda:
 
             if joint_torque.min() <= -40.:
                 self.gripper_moving = False
-
-        if not self.gripper_moving:
-            if self.gripper_target_reached:
-                self.gripper_target_pos = [0., 0.]
-                self.gripper_opening = True
-                self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
-                                                jointIndices=self.joints[-2:],
-                                                controlMode=p.POSITION_CONTROL,
-                                                targetPositions=self.gripper_target_pos,
-                                                forces=[200, 200])
-            else:
-                # set the final force.
-                # 
-                self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
-                                              jointIndices=self.joints[-2:],
-                                              controlMode=p.TORQUE_CONTROL,
-                                              forces=[150, 150])
             
-        elif self.gripper_moving:
+        if self.gripper_moving:
             self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
                                               jointIndices=self.joints[-2:],
                                               controlMode=p.VELOCITY_CONTROL,
                                               targetVelocities=[-0.025, -0.025],
                                               forces=[70, 70])
+        else :
+            self.bc.setJointMotorControlArray(bodyIndex=self.robot_id,
+                                              jointIndices=self.joints[-2:],
+                                              controlMode=p.POSITION_CONTROL,
+                                              targetPositions=self.gripper_target_pos,
+                                              forces=[200, 200])
 
     def open_gripper(self):
         try:
