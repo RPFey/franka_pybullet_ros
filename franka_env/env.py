@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation as sciR
 from franka_env.panda_robot import FrankaPanda # type: ignore
 import pybullet_utils.bullet_client as bc
 import numpy as np
+import importlib
 
 dirname = os.path.dirname(__file__)
 ycb_database = os.path.join(dirname, "../", "ycb_objects")
@@ -110,14 +111,14 @@ class FrankaPandaEnv:
                 
         if self.remove_box:
             self.bc.removeBody(self.box_id)
-        self.wait_for_objects_to_rest(1e-3, max_step=3000)
+        self.wait_for_objects_to_rest(1e-3, max_step=6000)
         
-        np.set_printoptions(precision=4, suppress=True)
+        np.set_printoptions(precision=8, suppress=True)
         for i, body in zip(obj_idx, self.object_id):
             pos, quat = self.bc.getBasePositionAndOrientation(body)
             pos = np.array(pos)
-            euler = sciR.from_quat(quat).as_euler('xyz')
-            print(object_list[i], pos, euler)
+            # euler = self.bc.getEulerFromQuaternion(quat)
+            print(object_list[i], np.concatenate([pos, quat]))
         np.set_printoptions(precision=8, suppress=False)
         
         self.bc.configureDebugVisualizer(self.bc.COV_ENABLE_RENDERING, 1)
@@ -129,23 +130,39 @@ class FrankaPandaEnv:
                                          basePosition=[0, 0, -0.65], useFixedBase=True)
         self.table_id = self.bc.loadURDF(os.path.join(pybullet_data.getDataPath(), "table/table.urdf"),
                                          basePosition=[0.5, 0, -0.65], useFixedBase=True)
-        
+
         print("Loading objects from a SDF")
         self.bc.setAdditionalSearchPath(os.path.join(dirname, "grasp_sdf_env"))
         self.bc.setAdditionalSearchPath(ycb_database)
-        object_id_temp = self.bc.loadSDF(object_sdf)
-        for id in object_id_temp:
-            pos, orn = self.bc.getBasePositionAndOrientation(id)
-            pos = (pos[0] + 0.9, pos[1] - 0.15, pos[2])
-            self.bc.resetBasePositionAndOrientation(id, pos, orn)
-            self.wait_for_objects_to_rest()
         
+        with open(object_sdf, 'r') as f:
+            objects = f.readlines()
+        
+        object_id_temp = []
+        for obj in objects:
+            items = [k for k in obj.split(' ') if len(k) > 0]
+            typename = items[0]
+
+            poses = np.array([float(k) for k in items[1:]])
+            poses[2] += 0.02
+            filename = os.path.join(ycb_database,  typename,  "model.urdf")
+
+            flags = self.bc.URDF_USE_INERTIA_FROM_FILE
+            object_id_temp.append(self.bc.loadURDF(filename, poses[:3], poses[3:], flags=flags))
+
+        # object_id_temp = self.bc.loadSDF(object_sdf)
+
         self.object_id += object_id_temp
-        # box should be the first object in sdf
-        self.box_id = object_id_temp[0]
-        if self.remove_box:
-            self.bc.removeBody(self.box_id)
-        
+        self.wait_for_objects_to_rest()
+        np.set_printoptions(precision=4, suppress=True)
+        for body in object_id_temp:
+            pos, quat = self.bc.getBasePositionAndOrientation(body)
+            pos = np.array(pos)
+            euler = self.bc.getEulerFromQuaternion(quat)
+            # euler = sciR.from_quat(quat).as_euler('xyz')
+            print(np.concatenate([pos, euler]))
+        np.set_printoptions(precision=8, suppress=False)
+
         self.bc.configureDebugVisualizer(self.bc.COV_ENABLE_RENDERING, 1)
     
     def remove_objects(self):
