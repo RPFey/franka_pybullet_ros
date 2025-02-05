@@ -28,6 +28,9 @@ class FrankaPandaEnv:
         self.remove_box = remove_box
         self.bc.setTimeStep(1 / frequency)
         self.bc.setGravity(0, 0, -9.81)
+        
+        self.bc.setRealTimeSimulation(0) 
+        self.bc.setPhysicsEngineParameter(numSolverIterations=500, deterministicOverlappingPairs=1, enableFileCaching=0)
 
         self.plane_id = None
         self.table_id = None
@@ -143,7 +146,7 @@ class FrankaPandaEnv:
             items = [k for k in obj.split(' ') if len(k) > 0]
             typename = items[0]
 
-            poses = np.array([float(k) for k in items[1:]])
+            poses = np.array([float(k) for k in items[1:]]).astype(np.float64)
             poses[2] += 0.02
             filename = os.path.join(ycb_database,  typename,  "model.urdf")
 
