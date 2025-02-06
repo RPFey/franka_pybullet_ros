@@ -152,6 +152,7 @@ class FrankaPandaEnv:
 
             flags = self.bc.URDF_USE_INERTIA_FROM_FILE
             object_id_temp.append(self.bc.loadURDF(filename, poses[:3], poses[3:], flags=flags))
+            self.id2names[object_id_temp[-1]] = typename
 
         # object_id_temp = self.bc.loadSDF(object_sdf)
 
