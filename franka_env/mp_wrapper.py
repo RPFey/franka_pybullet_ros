@@ -153,9 +153,9 @@ def run_simulation(mode, object_from_sdf, object_from_list,
     _, _, log_pos, log_orn = env.get_hand_eye()  
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for MP4
     log_writer = cv2.VideoWriter(os.path.join(logdir, 'output_video.mp4'), fourcc, 15, (800, 800))  # 30 FPS
-    log_pos = log_pos + np.array([0.5, 0.3, -0.2])
+    log_pos = log_pos + np.array([0.7, 0.45, -0.2])
     log_orn_mat = sciR.from_quat(log_orn, scalar_first=False).as_matrix()
-    log_orn_mat = log_orn_mat @ np.array([[0., 0, -1.], [0., 1., 0.], [1., 0., 0.]]) 
+    log_orn_mat = log_orn_mat @ np.array([[0., 0, -1.], [0., 1., 0.], [1., 0., 0.]]) @ np.array([[0., 1., 0.], [-1., 0., 0.], [0., 0., 1.]]) 
     log_orn = sciR.from_matrix(log_orn_mat).as_quat()
         
     while stop.value == 0:

@@ -143,6 +143,7 @@ class FrankaPandaEnv:
         
         object_id_temp = []
         for obj in objects:
+            obj = obj.strip('\n')
             items = [k for k in obj.split(' ') if len(k) > 0]
             typename = items[0]
 
