@@ -152,7 +152,7 @@ def run_simulation(mode, object_from_sdf, object_from_list,
 
     _, _, log_pos, log_orn = env.get_hand_eye()  
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for MP4
-    log_writer = cv2.VideoWriter(os.path.join(logdir, 'output_video.mp4'), fourcc, 15, (800, 800))  # 30 FPS
+    log_writer = cv2.VideoWriter(os.path.join(logdir, 'output_video.mp4'), fourcc, 15, (env.camera_width, env.camera_height))  # 30 FPS
     log_pos = log_pos + np.array([0.7, 0.45, -0.2])
     log_orn_mat = sciR.from_quat(log_orn, scalar_first=False).as_matrix()
     log_orn_mat = log_orn_mat @ np.array([[0., 0, -1.], [0., 1., 0.], [1., 0., 0.]]) @ np.array([[0., 1., 0.], [-1., 0., 0.], [0., 0., 1.]]) 
@@ -191,16 +191,16 @@ def run_simulation(mode, object_from_sdf, object_from_list,
             offcam, _ = env.get_image(off_cam_pos, off_cam_orn)
             
             with image_rgb.get_lock():
-                image_rgb_np_array = np.frombuffer(image_rgb.get_obj(), dtype=np.int32).reshape((800, 800, 3))
-                image_rgb_np_array[:, :, :] = color.reshape((800, 800, 3))
+                image_rgb_np_array = np.frombuffer(image_rgb.get_obj(), dtype=np.int32).reshape((env.camera_height, env.camera_width, 3))
+                image_rgb_np_array[:, :, :] = color.reshape((env.camera_height, env.camera_width, 3))
                 
             with image_depth.get_lock():
-                image_depth_np_array = np.frombuffer(image_depth.get_obj(), dtype=np.float32).reshape((800, 800))
-                image_depth_np_array[:, :] = depth.reshape((800, 800))
+                image_depth_np_array = np.frombuffer(image_depth.get_obj(), dtype=np.float32).reshape((env.camera_height, env.camera_width))
+                image_depth_np_array[:, :] = depth.reshape((env.camera_height, env.camera_width))
                 
             with image_left.get_lock():
-                image_left_np_array = np.frombuffer(image_left.get_obj(), dtype=np.int32).reshape((800, 800, 3))
-                image_left_np_array[:, :, :] = offcam.reshape((800, 800, 3))
+                image_left_np_array = np.frombuffer(image_left.get_obj(), dtype=np.int32).reshape((env.camera_height, env.camera_width, 3))
+                image_left_np_array[:, :, :] = offcam.reshape((env.camera_height, env.camera_width, 3))
         
         # write ee pose and camera pos
         hand_pos, hand_orn, cam_pos, cam_orn = env.get_hand_eye()
@@ -260,10 +260,10 @@ def cvPose2BulletView(t, q):
 class FrankaClutter:
     def __init__(self, object_from_sdf=None, object_from_list=True, 
                             gui=False, logdir="./", seed=42):
-        image_width = 800 # self._env.camera_width
-        image_height = 800 # self._env.camera_height
-        self.intrinsic = np.array([[400.0, 0.0, 400.],
-                                    [0.0, 400.0, 400.],
+        image_width = 1280 # self._env.camera_width
+        image_height = 640 # self._env.camera_height
+        self.intrinsic = np.array([[522.9766845703125, 0.0, 639.2359619140625],
+                                    [0.0, 522.9766845703125, 352.5016174316406],
                                     [0.0, 0.0, 1.0]])
         mode = p.GUI if gui else p.DIRECT
     
@@ -276,6 +276,8 @@ class FrankaClutter:
         self._image_left_rgb = mp.Array('i', image_width * image_height * 3)
         self._image_depth = mp.Array('f', image_width * image_height)
         self._stop = mp.Value('i', 0)
+        self.image_width = image_width
+        self.image_height = image_height
         
         print("Start Env ...")
         self._process = mp.Process(target=run_simulation, args=(mode, object_from_sdf, object_from_list, 
@@ -298,9 +300,9 @@ class FrankaClutter:
         return ee_pose.copy()
         
     def get_image(self):
-        image = np.frombuffer(self._image_rgb.get_obj(), dtype=np.int32).reshape((800, 800, 3))
-        depth = np.frombuffer(self._image_depth.get_obj(), dtype=np.float32).reshape((800, 800))
-        image_left = np.frombuffer(self._image_left_rgb.get_obj(), dtype=np.int32).reshape((800, 800, 3))
+        image = np.frombuffer(self._image_rgb.get_obj(), dtype=np.int32).reshape((self.image_height, self.image_width, 3))
+        depth = np.frombuffer(self._image_depth.get_obj(), dtype=np.float32).reshape((self.image_height, self.image_width))
+        image_left = np.frombuffer(self._image_left_rgb.get_obj(), dtype=np.int32).reshape((self.image_height, self.image_width, 3))
         return image.copy().astype(np.uint8), image_left.copy().astype(np.uint8), depth.copy()
     
     def get_joint_data(self):

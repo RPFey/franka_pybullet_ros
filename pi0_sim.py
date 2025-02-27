@@ -29,10 +29,8 @@ logger_fn = logger.info
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_root", type=str, default="/home/leiboshu")
     parser.add_argument("--ep_file", type=str, default=None)
     parser.add_argument("--ep_root", type=str, default=None)
-    parser.add_argument("--urdf_list", action="store_true", default=False)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--viz", action="store_true", default=False)
     opt = parser.parse_args()
@@ -61,6 +59,11 @@ if __name__ == '__main__':
         logger_fn("Waiting for the camera to start")
         rgb, rgb_left, depth = env.get_image()
     
+    plt.figure()
+    plt.imshow(rgb)
+    plt.savefig("rgb.png")
+    plt.close()
+    
     
     while True:
         instruction = input("Enter instruction: ")
@@ -80,7 +83,7 @@ if __name__ == '__main__':
                 
                 rgb, rgb_left, depth = env.get_image()
                 joint_state = env.get_joint_data()
-                video.append(rgb)
+                video.append(rgb_left)
 
                 # Send websocket request to policy server if it's time to predict a new chunk
                 if actions_from_chunk_completed == 0 or actions_from_chunk_completed >= 8:
@@ -122,14 +125,14 @@ if __name__ == '__main__':
             
             except KeyboardInterrupt:
                 break
-    
+
         video = np.stack(video)
         video = video[:, :, :, ::-1]
         save_filename = "video.mp4"
         
         # write video to disk
         logger_fn(f"Saving video to {save_filename}")
-        video_writer = cv2.VideoWriter(save_filename, cv2.VideoWriter_fourcc(*"mp4v"), 30, (800, 800))
+        video_writer = cv2.VideoWriter(save_filename, cv2.VideoWriter_fourcc(*"mp4v"), 30, (video.shape[2], video.shape[1]))
         for i in range(len(video)):
             video_writer.write(video[i])
 

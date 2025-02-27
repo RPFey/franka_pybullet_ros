@@ -52,17 +52,18 @@ class FrankaPandaEnv:
         self.object_from_sdf = object_from_sdf
         self.panda_robot = FrankaPanda(self.bc, include_gripper=include_gripper, simple_model=simple_model)
         
-        
         # camera parameters
-        self.camera_width = 800
-        self.camera_height = 800
-        self.camera_fovx = np.pi / 2
-        self.camera_fovy = np.pi / 2
-        self.focal_x = (self.camera_width / 2) / (np.tan(self.camera_fovx / 2))
-        self.focal_y = (self.camera_height / 2) / (np.tan(self.camera_fovy / 2))
+        self.camera_width = 1280
+        self.camera_height = 640
+        self.focal_x = 527.8270874023438 # (self.camera_width / 2) / (np.tan(self.camera_fovx / 2))
+        self.focal_y = 527.8270874023438 # (self.camera_height / 2) / (np.tan(self.camera_fovy / 2))
+        self.cx = 627.3494873046875
+        self.cy = 352.8506774902344
+        self.camera_fovx = np.atan(self.camera_width / (2 * self.focal_x)) * 2
+        self.camera_fovy = np.atan(self.camera_height / (2 * self.focal_y)) * 2
         self.camera_near = 0.02
         self.camera_far = 5.00
-        self.K = np.array([[self.focal_x, 0., self.camera_width / 2], [0., self.focal_y, self.camera_height / 2], [0., 0., 1.]])
+        self.K = np.array([[self.focal_x, 0., self.cx], [0., self.focal_y, self.cy], [0., 0., 1.]])
         self.projection_matrix = np.array([
             [2 / self.camera_width * self.K[0, 0], 0, (self.camera_width - 2 * self.K[0, 2]) / self.camera_width, 0],
             [0, 2 / self.camera_height * self.K[1, 1], (2 * self.K[1, 2] - self.camera_height) / self.camera_height, 0],
