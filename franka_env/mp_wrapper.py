@@ -131,12 +131,12 @@ class FrankaPandaEnvPhysics(FrankaPandaEnv):
 def run_simulation(mode, object_from_sdf, object_from_list,
                         joint_input, joint_data, 
                             gripper, camera_pose, ee_pose, 
-                                image_rgb, image_depth, stop, logdir, seed):
+                                image_rgb, image_left, image_depth, stop, logdir, seed):
     
     frequency = 1000.
     env = FrankaPandaEnvPhysics(connection_mode=mode,
                                 frequency=frequency,
-                                controller='position',
+                                controller='velocity',
                                 include_gripper=True,
                                 simple_model=True,
                                 remove_box=True,
@@ -157,6 +157,8 @@ def run_simulation(mode, object_from_sdf, object_from_list,
     log_orn_mat = sciR.from_quat(log_orn, scalar_first=False).as_matrix()
     log_orn_mat = log_orn_mat @ np.array([[0., 0, -1.], [0., 1., 0.], [1., 0., 0.]]) @ np.array([[0., 1., 0.], [-1., 0., 0.], [0., 0., 1.]]) 
     log_orn = sciR.from_matrix(log_orn_mat).as_quat()
+    off_cam_pos = np.array([0.06024406478230676, 0.4313257356121508, 0.2590866447968665])
+    off_cam_orn = sciR.from_euler('xyz', [-2.1230107739015187, 0.00917199508808908, -2.065532998343196]).as_quat()
         
     while stop.value == 0:
         with joint_input.get_lock():
@@ -186,6 +188,8 @@ def run_simulation(mode, object_from_sdf, object_from_list,
             log = cv2.cvtColor(log, cv2.COLOR_RGB2BGR)
             log_writer.write(log)
             
+            offcam, _ = env.get_image(off_cam_pos, off_cam_orn)
+            
             with image_rgb.get_lock():
                 image_rgb_np_array = np.frombuffer(image_rgb.get_obj(), dtype=np.int32).reshape((800, 800, 3))
                 image_rgb_np_array[:, :, :] = color.reshape((800, 800, 3))
@@ -193,6 +197,10 @@ def run_simulation(mode, object_from_sdf, object_from_list,
             with image_depth.get_lock():
                 image_depth_np_array = np.frombuffer(image_depth.get_obj(), dtype=np.float32).reshape((800, 800))
                 image_depth_np_array[:, :] = depth.reshape((800, 800))
+                
+            with image_left.get_lock():
+                image_left_np_array = np.frombuffer(image_left.get_obj(), dtype=np.int32).reshape((800, 800, 3))
+                image_left_np_array[:, :, :] = offcam.reshape((800, 800, 3))
         
         # write ee pose and camera pos
         hand_pos, hand_orn, cam_pos, cam_orn = env.get_hand_eye()
@@ -252,8 +260,6 @@ def cvPose2BulletView(t, q):
 class FrankaClutter:
     def __init__(self, object_from_sdf=None, object_from_list=True, 
                             gui=False, logdir="./", seed=42):
-        mp.set_start_method('spawn')
-    
         image_width = 800 # self._env.camera_width
         image_height = 800 # self._env.camera_height
         self.intrinsic = np.array([[400.0, 0.0, 400.],
@@ -267,6 +273,7 @@ class FrankaClutter:
         self._camera_pose = mp.Array('f', 16)
         self._ee_pose = mp.Array('f', 16)
         self._image_rgb = mp.Array('i', image_width * image_height * 3)
+        self._image_left_rgb = mp.Array('i', image_width * image_height * 3)
         self._image_depth = mp.Array('f', image_width * image_height)
         self._stop = mp.Value('i', 0)
         
@@ -274,7 +281,7 @@ class FrankaClutter:
         self._process = mp.Process(target=run_simulation, args=(mode, object_from_sdf, object_from_list, 
                                                                 self._joint_input, self._joint_data, 
                                                                 self._gripper, self._camera_pose, self._ee_pose, 
-                                                                self._image_rgb, self._image_depth, self._stop, logdir, seed))
+                                                                self._image_rgb, self._image_left_rgb, self._image_depth, self._stop, logdir, seed))
         self._process.start()
         
     def get_camera_intrinsic(self):
@@ -293,7 +300,8 @@ class FrankaClutter:
     def get_image(self):
         image = np.frombuffer(self._image_rgb.get_obj(), dtype=np.int32).reshape((800, 800, 3))
         depth = np.frombuffer(self._image_depth.get_obj(), dtype=np.float32).reshape((800, 800))
-        return image.copy().astype(np.uint8), depth.copy()
+        image_left = np.frombuffer(self._image_left_rgb.get_obj(), dtype=np.int32).reshape((800, 800, 3))
+        return image.copy().astype(np.uint8), image_left.copy().astype(np.uint8), depth.copy()
     
     def get_joint_data(self):
         """  
