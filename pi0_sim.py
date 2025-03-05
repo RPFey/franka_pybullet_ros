@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from openpi.training import config
 from openpi.policies import policy_config
 from openpi.shared import download
+from openpi_client import image_tools
 
 from franka_env.mp_wrapper import FrankaClutter
 
@@ -26,6 +27,9 @@ fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 
 logger_fn = logger.info
+
+# DROID data collection frequency -- we slow down execution to match this frequency
+DROID_CONTROL_FREQUENCY = 15
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -59,9 +63,14 @@ if __name__ == '__main__':
         logger_fn("Waiting for the camera to start")
         rgb, rgb_left, depth = env.get_image()
     
-    plt.figure()
-    plt.imshow(rgb)
-    plt.savefig("rgb.png")
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    axes[0].imshow(rgb)
+    axes[1].imshow(rgb_left)
+    axes[0].axis("off")
+    axes[1].axis("off")
+    axes[0].set_title("Hand camera")
+    axes[1].set_title("Left camera")
+    plt.savefig("inital.png")
     plt.close()
     
     
@@ -74,8 +83,8 @@ if __name__ == '__main__':
 
         # Prepare to save video of rollout
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H:%M:%S")
-        video = []
-        bar = tqdm.tqdm(range(2000))
+        video = {"hand": [], "left": []}
+        bar = tqdm.tqdm(range(4000))
         print("Running rollout... press Ctrl+C to stop early.")
         for t_step in bar:
             start_time = time.time()
@@ -83,20 +92,30 @@ if __name__ == '__main__':
                 
                 rgb, rgb_left, depth = env.get_image()
                 joint_state = env.get_joint_data()
-                video.append(rgb_left)
+                video["hand"].append(rgb)
+                video["left"].append(rgb_left)
 
                 # Send websocket request to policy server if it's time to predict a new chunk
                 if actions_from_chunk_completed == 0 or actions_from_chunk_completed >= 8:
                     actions_from_chunk_completed = 0
+                    env.set_joint_input(np.zeros((7,)))
 
                     # We resize images on the robot laptop to minimize the amount of data sent to the policy server
                     # and improve latency.
+                    rgb = image_tools.resize_with_pad(
+                                rgb, 224, 224
+                        )
+                    
+                    rgb_left = image_tools.resize_with_pad(
+                            rgb_left, 224, 224
+                        )
+                    
                     example = {
                         "observation/wrist_image_left": rgb.astype(np.float32) / 255.,
-                        "observation/exterior_image_1_left": rgb_left.astype(np.float32) / 255.,
+                        "observation/exterior_image_1_left": rgb_left.astype(np.float32) / 255., 
                         "observation/joint_position": joint_state[0, :7],
                         "observation/gripper_position": joint_state[0, [7]],
-                        "prompt": "pick up the yellow banana"
+                        "prompt": instruction
                     }
                     
                     pred_action_chunk = policy.infer(example)["actions"]
@@ -109,11 +128,11 @@ if __name__ == '__main__':
                 if action[-1].item() > 0.5:
                     # action[-1] = 1.0
                     action = np.concatenate([action[:-1], np.ones((1,))])
-                    env.open_gripper()
+                    env.close_gripper()
                 else:
                     # action[-1] = 0.0
                     action = np.concatenate([action[:-1], np.zeros((1,))])
-                    env.close_gripper()
+                    env.open_gripper()
 
                 # clip all dimensions of action to [-1, 1]
                 action = np.clip(action, -1, 1)
@@ -121,20 +140,22 @@ if __name__ == '__main__':
 
                 # Sleep to match DROID data collection frequency
                 elapsed_time = time.time() - start_time
-            
+                if elapsed_time < 1 / DROID_CONTROL_FREQUENCY:
+                    time.sleep(1 / DROID_CONTROL_FREQUENCY - elapsed_time)
             
             except KeyboardInterrupt:
                 break
 
-        video = np.stack(video)
-        video = video[:, :, :, ::-1]
-        save_filename = "video.mp4"
-        
-        # write video to disk
-        logger_fn(f"Saving video to {save_filename}")
-        video_writer = cv2.VideoWriter(save_filename, cv2.VideoWriter_fourcc(*"mp4v"), 30, (video.shape[2], video.shape[1]))
-        for i in range(len(video)):
-            video_writer.write(video[i])
+        for k, v in video.items():
+            video = np.stack(v)
+            video = video[:, :, :, ::-1]
+            save_filename = f"{k}.mp4"
+    
+            # write video to disk
+            logger_fn(f"Saving video to {save_filename}")
+            video_writer = cv2.VideoWriter(save_filename, cv2.VideoWriter_fourcc(*"mp4v"), 30, (video.shape[2], video.shape[1]))
+            for i in range(len(video)):
+                video_writer.write(video[i])
 
         if input("Do one more eval? (enter y or n) ").lower() != "y":
             break

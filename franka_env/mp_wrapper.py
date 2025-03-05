@@ -157,8 +157,8 @@ def run_simulation(mode, object_from_sdf, object_from_list,
     log_orn_mat = sciR.from_quat(log_orn, scalar_first=False).as_matrix()
     log_orn_mat = log_orn_mat @ np.array([[0., 0, -1.], [0., 1., 0.], [1., 0., 0.]]) @ np.array([[0., 1., 0.], [-1., 0., 0.], [0., 0., 1.]]) 
     log_orn = sciR.from_matrix(log_orn_mat).as_quat()
-    off_cam_pos = np.array([0.06024406478230676, 0.4313257356121508, 0.2590866447968665])
-    off_cam_orn = sciR.from_euler('xyz', [-2.1230107739015187, 0.00917199508808908, -2.065532998343196]).as_quat()
+    off_cam_pos = np.array([0.06024406478230676, 0.5513257356121508, 0.3590866447968665])
+    off_cam_orn = sciR.from_euler('xyz', [-1.7530107739015187, 0.00917199508808908, -2.365532998343196]).as_quat()
         
     while stop.value == 0:
         with joint_input.get_lock():
@@ -183,11 +183,7 @@ def run_simulation(mode, object_from_sdf, object_from_list,
         if env.video_step == 0: 
             hand_pos, hand_orn, cam_pos, cam_orn = env.get_hand_eye()  
             color, depth = env.get_image(cam_pos, cam_orn)
-            
             log, _ = env.get_image(log_pos, log_orn)
-            log = cv2.cvtColor(log, cv2.COLOR_RGB2BGR)
-            log_writer.write(log)
-            
             offcam, _ = env.get_image(off_cam_pos, off_cam_orn)
             
             with image_rgb.get_lock():
@@ -202,6 +198,9 @@ def run_simulation(mode, object_from_sdf, object_from_list,
                 image_left_np_array = np.frombuffer(image_left.get_obj(), dtype=np.int32).reshape((env.camera_height, env.camera_width, 3))
                 image_left_np_array[:, :, :] = offcam.reshape((env.camera_height, env.camera_width, 3))
         
+            log = cv2.cvtColor(log, cv2.COLOR_RGB2BGR)
+            log_writer.write(log)
+            
         # write ee pose and camera pos
         hand_pos, hand_orn, cam_pos, cam_orn = env.get_hand_eye()
         with camera_pose.get_lock():

@@ -20,9 +20,9 @@ class FrankaPanda:
         if simple_model:
             flags = flags | self.bc.URDF_MERGE_FIXED_LINKS
         self.robot_id = self.bc.loadURDF(panda_model, useFixedBase=True, flags=flags)
-        if simple_model:
-            for i in range(-1, self.bc.getNumJoints(self.robot_id)):
-                self.bc.changeVisualShape(self.robot_id, i, rgbaColor=[248. / 255., 174. / 255., 201. / 255, 1.])
+        # if simple_model:
+        #     for i in range(-1, self.bc.getNumJoints(self.robot_id)):
+        #         self.bc.changeVisualShape(self.robot_id, i, rgbaColor=[248. / 255., 174. / 255., 201. / 255, 1.])
         self.bc.configureDebugVisualizer(self.bc.COV_ENABLE_RENDERING, 1)
 
         # hard-coded information about the robot
