@@ -147,12 +147,20 @@ class FrankaPandaEnvPhysics(FrankaPandaEnv):
             contacts = self.bc.getContactPoints(self.panda_robot.robot_id, id)
             if len(contacts) > 0:
                 print(self.id2names[id] + " is in contact with the hand")
-                break   
+                break
+            
+    def get_object_in_hand(self):
+        for id in self.object_id:
+            contacts = self.bc.getContactPoints(self.panda_robot.robot_id, id)
+            if len(contacts) > 0:
+                bullet_id2object_id = {k: (v + 1) for v, k in enumerate(self.object_id)} 
+                return bullet_id2object_id[id]
+        return -1 
     
 def run_simulation(mode, object_from_sdf, object_from_list,
                         joint_input, joint_data, 
                             gripper, camera_pose, ee_pose, 
-                                image_rgb, image_depth, image_seg, stop, logdir, seed):
+                                image_rgb, image_depth, image_seg, pipe, logdir, seed):
     
     frequency = 1000.
     env = FrankaPandaEnvPhysics(connection_mode=mode,
@@ -179,7 +187,18 @@ def run_simulation(mode, object_from_sdf, object_from_list,
     log_orn_mat = log_orn_mat @ np.array([[0., 0, -1.], [0., 1., 0.], [1., 0., 0.]]) @ np.array([[0., 1., 0.], [-1., 0., 0.], [0., 0., 1.]]) 
     log_orn = sciR.from_matrix(log_orn_mat).as_quat()
         
-    while stop.value == 0:
+    while True:
+        if pipe.poll():  # Check if there is a message
+            msg, value = pipe.recv()
+            
+            if msg == 'exit':
+                break
+            
+            if msg == 'get_object':
+                # retrieve the objects
+                obj_id = env.get_object_in_hand()
+                pipe.send(obj_id)
+                    
         with joint_input.get_lock():
             joint_input_np_array = np.frombuffer(joint_input.get_obj(), dtype=np.float32)
             
@@ -297,15 +316,23 @@ class FrankaClutter:
         self._image_rgb = mp.Array('i', image_width * image_height * 3)
         self._image_depth = mp.Array('f', image_width * image_height)
         self._image_seg = mp.Array('i', image_width * image_height)
-        self._stop = mp.Value('i', 0)
+        # self._stop = mp.Value('i', 0)
+        self.parent_conn, child_conn = mp.Pipe()
         
         print("Start Env ...")
         self._process = mp.Process(target=run_simulation, args=(mode, object_from_sdf, object_from_list, 
                                                                 self._joint_input, self._joint_data, 
                                                                 self._gripper, self._camera_pose, self._ee_pose, 
                                                                 self._image_rgb, self._image_depth, self._image_seg,
-                                                                self._stop, logdir, seed))
+                                                                child_conn, logdir, seed))
         self._process.start()
+        
+        # wait for the camera to start
+        rgb, _ = self.get_image()
+        while rgb.max() == 0:
+            time.sleep(1)
+            self.logger_fn("Waiting for the camera to start")
+            rgb, _ = self.get_image() 
         
     def get_camera_intrinsic(self):
         return self.intrinsic.copy()
@@ -355,9 +382,12 @@ class FrankaClutter:
             shared_np_array[:] = joint_input
     
     def end(self):
-        self._stop.value = 1
+        self.parent_conn.send(("exit", None))
         self._process.join()
         
+    def get_object_in_hand(self):
+        self.parent_conn.send(("get_object", None))
+        return self.parent_conn.recv()
 
 if __name__ == "__main__":
     env = FrankaClutter(object_from_sdf="",
