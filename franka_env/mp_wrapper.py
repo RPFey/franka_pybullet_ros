@@ -106,7 +106,7 @@ class FrankaPandaEnvPhysics(FrankaPandaEnv):
             
         self.bc.stepSimulation()
         
-    def get_image(self, cam_pos, cam_orn):
+    def get_image(self, cam_pos, cam_orn, return_seg=False):
         self.view_matrix = cvPose2BulletView(cam_pos, cam_orn)
         img = self.bc.getCameraImage(self.camera_width, self.camera_height, self.view_matrix,
                                      self.projection_matrix.reshape(-1).tolist(),
@@ -117,8 +117,29 @@ class FrankaPandaEnvPhysics(FrankaPandaEnv):
         depth = self.camera_far * self.camera_near / (
                 self.camera_far - (self.camera_far - self.camera_near) * np.array(img[3]))
         
+        seg = np.array(img[4], dtype=np.int32)
+        invalid_mask = seg < 0
+        
+        # The seg has value = objectUniqueId + (linkIndex+1) << 24
+        # get the object id
+        object_id = seg & 0x00ffffff
+        seg = np.where(invalid_mask, np.ones_like(seg) * -1, object_id)
+        
+    
+        bullet_id2object_id = {k: (v + 1) for v, k in enumerate(self.object_id)} 
+        # for all values in seg, if it is in key of bullet_id2object_id, then replace it with the value,
+        # otherwise, 0
+        cate_ids = np.unique(seg)
+        seg_norm = np.zeros_like(seg)  
+        for cate_id in cate_ids:
+            if cate_id in bullet_id2object_id:
+                seg_norm = np.where(seg == cate_id, bullet_id2object_id[cate_id], seg_norm)
+        
         # depth = np.where(depth >= self.camera_far, np.zeros_like(depth), depth)
-        return color, depth
+        if return_seg:
+            return color, depth, seg_norm
+        else:
+            return color, depth
     
     def print_contact(self):
 
@@ -131,7 +152,7 @@ class FrankaPandaEnvPhysics(FrankaPandaEnv):
 def run_simulation(mode, object_from_sdf, object_from_list,
                         joint_input, joint_data, 
                             gripper, camera_pose, ee_pose, 
-                                image_rgb, image_depth, stop, logdir, seed):
+                                image_rgb, image_depth, image_seg, stop, logdir, seed):
     
     frequency = 1000.
     env = FrankaPandaEnvPhysics(connection_mode=mode,
@@ -180,7 +201,7 @@ def run_simulation(mode, object_from_sdf, object_from_list,
         # write camera data
         if env.video_step == 0: 
             hand_pos, hand_orn, cam_pos, cam_orn = env.get_hand_eye()  
-            color, depth = env.get_image(cam_pos, cam_orn)
+            color, depth, seg = env.get_image(cam_pos, cam_orn, return_seg=True)
             
             log, _ = env.get_image(log_pos, log_orn)
             log = cv2.cvtColor(log, cv2.COLOR_RGB2BGR)
@@ -193,6 +214,10 @@ def run_simulation(mode, object_from_sdf, object_from_list,
             with image_depth.get_lock():
                 image_depth_np_array = np.frombuffer(image_depth.get_obj(), dtype=np.float32).reshape((800, 800))
                 image_depth_np_array[:, :] = depth.reshape((800, 800))
+                
+            with image_seg.get_lock():
+                image_seg_np_array = np.frombuffer(image_seg.get_obj(), dtype=np.int32).reshape((800, 800))
+                image_seg_np_array[:, :] = seg.reshape((800, 800))
         
         # write ee pose and camera pos
         hand_pos, hand_orn, cam_pos, cam_orn = env.get_hand_eye()
@@ -252,7 +277,10 @@ def cvPose2BulletView(t, q):
 class FrankaClutter:
     def __init__(self, object_from_sdf=None, object_from_list=True, 
                             gui=False, logdir="./", seed=42):
-        mp.set_start_method('spawn')
+        # if the context is set for mp, then
+        # the mp.set_start_method('spawn') should be called
+        if mp.get_start_method(allow_none=True) is None:
+            mp.set_start_method('spawn')
     
         image_width = 800 # self._env.camera_width
         image_height = 800 # self._env.camera_height
@@ -268,13 +296,15 @@ class FrankaClutter:
         self._ee_pose = mp.Array('f', 16)
         self._image_rgb = mp.Array('i', image_width * image_height * 3)
         self._image_depth = mp.Array('f', image_width * image_height)
+        self._image_seg = mp.Array('i', image_width * image_height)
         self._stop = mp.Value('i', 0)
         
         print("Start Env ...")
         self._process = mp.Process(target=run_simulation, args=(mode, object_from_sdf, object_from_list, 
                                                                 self._joint_input, self._joint_data, 
                                                                 self._gripper, self._camera_pose, self._ee_pose, 
-                                                                self._image_rgb, self._image_depth, self._stop, logdir, seed))
+                                                                self._image_rgb, self._image_depth, self._image_seg,
+                                                                self._stop, logdir, seed))
         self._process.start()
         
     def get_camera_intrinsic(self):
@@ -290,10 +320,15 @@ class FrankaClutter:
             ee_pose = np.frombuffer(self._ee_pose.get_obj(), dtype=np.float32).reshape((4, 4))
         return ee_pose.copy()
         
-    def get_image(self):
+    def get_image(self, return_seg=False):
         image = np.frombuffer(self._image_rgb.get_obj(), dtype=np.int32).reshape((800, 800, 3))
         depth = np.frombuffer(self._image_depth.get_obj(), dtype=np.float32).reshape((800, 800))
-        return image.copy().astype(np.uint8), depth.copy()
+        seg = np.frombuffer(self._image_seg.get_obj(), dtype=np.int32).reshape((800, 800))
+        
+        if return_seg:
+            return image.copy().astype(np.uint8), depth.copy(), seg.copy().astype(np.int32)
+        else:
+            return image.copy().astype(np.uint8), depth.copy()
     
     def get_joint_data(self):
         """  
@@ -325,14 +360,41 @@ class FrankaClutter:
         
 
 if __name__ == "__main__":
-    env = FrankaClutter() 
+    env = FrankaClutter(object_from_sdf="",
+                        object_from_list=True, gui=True) 
     try:
         while True:
-            rgb, depth = env.get_image()
+            rgb, depth, seg = env.get_image(return_seg=True)
             if rgb.max () > 10:
-                # cv2.imshow("rgb", rgb)
-                # cv2.waitKey(1)
-                # raise KeyboardInterrupt()
+                
+                # generate random color for each catorgory
+                colors = np.random.randint(0, 255, (np.max(seg)+1, 3))
+                mask = np.zeros_like(rgb)
+                for i in range(np.max(seg)+1):
+                    mask[seg == i] = colors[i]
+                
+                    # put text for each category
+                    # compute the centroid
+                    region_x = np.where(seg == i)[1]
+                    region_y = np.where(seg == i)[0]
+                    
+                    if len(region_x) == 0 or len(region_y) == 0:
+                        continue
+                    
+                    center_x = region_x.mean().astype(int)
+                    center_y = region_y.mean().astype(int)
+                    
+                    if center_x < 0 or center_y < 0 \
+                        or center_x >= mask.shape[1] or center_y >= mask.shape[0]:
+                        continue
+
+                    mask = cv2.putText(mask, str(i), (center_x, center_y), 
+                                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+                
+                
+                cv2.imshow("mask", mask)
+                cv2.waitKey(1)
+
                 env.close_gripper()
                 print("Gripper closed")
                 break

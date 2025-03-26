@@ -41,7 +41,7 @@ class FrankaPandaEnv:
         self.id2names = {}
 
         if object_from_list:
-            self.add_ycb_objects_from_list(self.object_list)
+            self.add_ycb_objects_from_list(self.object_list, min(len(self.object_list), 10))
         elif object_from_sdf:
             self.add_ycb_objects_from_sdf(object_from_sdf)
 
@@ -51,7 +51,6 @@ class FrankaPandaEnv:
         self.object_from_list = object_from_list
         self.object_from_sdf = object_from_sdf
         self.panda_robot = FrankaPanda(self.bc, include_gripper=include_gripper, simple_model=simple_model)
-        
         
         # camera parameters
         self.camera_width = 800
@@ -89,7 +88,7 @@ class FrankaPandaEnv:
         noise_y = self.rng.uniform(-0.05, 0.05)
         self.object_id.append(self.bc.loadURDF(filename, [0.5 + noise_x, 0.0 + noise_y, 0.4], flags=flags))
 
-    def add_ycb_objects_from_list(self, object_list, object_num=10):
+    def add_ycb_objects_from_list(self, object_list, object_num=6):
         self.bc.configureDebugVisualizer(self.bc.COV_ENABLE_RENDERING, 0)
 
         self.plane_id = self.bc.loadURDF(os.path.join(pybullet_data.getDataPath(), "plane.urdf"),
@@ -114,7 +113,7 @@ class FrankaPandaEnv:
                 
         if self.remove_box:
             self.bc.removeBody(self.box_id)
-        self.wait_for_objects_to_rest(1e-3, max_step=6000)
+        self.wait_for_objects_to_rest(1e-3, max_step=2000)
         
         np.set_printoptions(precision=8, suppress=True)
         for i, body in zip(obj_idx, self.object_id):
@@ -149,7 +148,7 @@ class FrankaPandaEnv:
 
             poses = np.array([float(k) for k in items[1:]]).astype(np.float64)
             poses[2] += 0.02
-            filename = os.path.join(ycb_database,  typename,  "model.urdf")
+            filename = os.path.join(ycb_database, typename, "model.urdf")
 
             flags = self.bc.URDF_USE_INERTIA_FROM_FILE
             object_id_temp.append(self.bc.loadURDF(filename, poses[:3], poses[3:], flags=flags))
