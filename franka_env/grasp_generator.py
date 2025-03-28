@@ -305,7 +305,7 @@ class Gripper(object):
 
         self.max_opening_width = 0.08
         self.finger_depth = 0.05
-        self.T_body_tcp = Transform(Rotation.identity(), [0.0, 0.0, 0.022])
+        self.T_body_tcp = Transform(Rotation.identity(), [0.0, 0.0, 0.0])
         self.T_tcp_body = self.T_body_tcp.inverse()
 
     def reset(self, T_world_tcp):
