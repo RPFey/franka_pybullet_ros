@@ -218,7 +218,7 @@ class ClutterRemovalSim(object):
 
         return tsdf, high_res_tsdf.get_cloud(), timing
 
-    def execute_grasp(self, grasp, remove=True, allow_contact=False):
+    def execute_grasp(self, grasp, remove=True, allow_contact=False, target_id=-1):
         T_world_grasp = grasp.pose
         T_grasp_pregrasp = Transform(Rotation.identity(), [0.0, 0.0, -0.05])
         T_world_pregrasp = T_world_grasp * T_grasp_pregrasp
@@ -244,7 +244,7 @@ class ClutterRemovalSim(object):
             else:
                 self.gripper.move(0.0)
                 self.gripper.move_tcp_xyz(T_world_retreat, abort_on_contact=False)
-                if self.check_success(self.gripper):
+                if self.check_success(self.gripper, target_id):
                     result = Label.SUCCESS, self.gripper.read()
                     if remove:
                         contacts = self.world.get_contacts(self.gripper.body)
@@ -289,10 +289,20 @@ class ClutterRemovalSim(object):
                 removed_object = True
         return removed_object
 
-    def check_success(self, gripper):
+    # def check_success(self, gripper, target_id=-1):
+    #     # check that the fingers are in contact with some object and not fully closed
+    #     contacts = self.world.get_contacts(gripper.body)
+    #     res = len(contacts) > 0 and gripper.read() > 0.1 * gripper.max_opening_width
+    #     return res
+    
+    def check_success(self, gripper, target_id=-1):
         # check that the fingers are in contact with some object and not fully closed
-        contacts = self.world.get_contacts(gripper.body)
-        res = len(contacts) > 0 and gripper.read() > 0.1 * gripper.max_opening_width
+        if target_id > 0:
+            contacts = self.world.p.getContactPoints(bodyA=gripper.body.uid, bodyB=target_id)
+            res = len(contacts) > 0 and gripper.read() > 0.1 * gripper.max_opening_width
+        else:
+            contacts = self.world.get_contacts(gripper.body)
+            res = len(contacts) > 0 and gripper.read() > 0.1 * gripper.max_opening_width
         return res
 
 
@@ -418,7 +428,7 @@ def render_images(sim, n):
 
     return depth_imgs, extrinsics, segmentations
 
-def evaluate_grasp_point(sim, pose, num_rotations=6):
+def evaluate_grasp_point(sim, pose, num_rotations=6,target_id=-1):
     pos = pose[:3, 3]
     # define initial grasp frame on object surface
     # z_axis = -normal
@@ -436,17 +446,17 @@ def evaluate_grasp_point(sim, pose, num_rotations=6):
         ori = R * Rotation.from_euler("z", yaw)
         sim.restore_state()
         candidate = Grasp(Transform(ori, pos), width=sim.gripper.max_opening_width)
-        outcome, width = sim.execute_grasp(candidate, remove=False)
+        outcome, width = sim.execute_grasp(candidate, remove=False, target_id=target_id)
         outcomes.append(outcome)
         widths.append(width)
         
     return outcomes, widths
 
-def evaluate_grasp_pose(sim, pose):
+def evaluate_grasp_pose(sim, pose, target_id=-1):
     pos = pose[:3, 3]
     R = Rotation.from_matrix(pose[:3, :3])
     candidate = Grasp(Transform(R, pos), width=sim.gripper.max_opening_width)
-    outcome, width = sim.execute_grasp(candidate, remove=False)
+    outcome, width = sim.execute_grasp(candidate, remove=False, target_id=target_id)
     return outcome, width
 
 def main():
