@@ -295,7 +295,7 @@ def cvPose2BulletView(t, q):
 
 class FrankaClutter:
     def __init__(self, object_from_sdf=None, object_from_list=True, 
-                            gui=False, logdir="./", seed=42):
+                            gui=False, logdir="./", seed=42, logger_fn=print):
         # if the context is set for mp, then
         # the mp.set_start_method('spawn') should be called
         if mp.get_start_method(allow_none=True) is None:
@@ -331,7 +331,7 @@ class FrankaClutter:
         rgb, _ = self.get_image()
         while rgb.max() == 0:
             time.sleep(1)
-            self.logger_fn("Waiting for the camera to start")
+            logger_fn("Waiting for the camera to start")
             rgb, _ = self.get_image() 
         
     def get_camera_intrinsic(self):
