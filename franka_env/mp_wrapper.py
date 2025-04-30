@@ -53,7 +53,7 @@ class FrankaPandaEnvPhysics(FrankaPandaEnv):
             self.current_joint_input = [0, 0, 0, 0, 0, 0, 0]
         self.current_gripper_input = True
         self.panda_robot.open_gripper()
-        self.video_step = 0 
+        self.video_step = 0
         
     def get_hand_eye(self):
         """
@@ -172,6 +172,7 @@ def run_simulation(mode, object_from_sdf, object_from_list,
                                 seed=seed,
                                 object_from_sdf=object_from_sdf,
                                 object_from_list=object_from_list)
+    state_id = env.bc.saveState()
     
     # get home joints
     joint_input_np_array = np.frombuffer(joint_input.get_obj(), dtype=np.float32)
@@ -182,15 +183,25 @@ def run_simulation(mode, object_from_sdf, object_from_list,
     _, _, log_pos, log_orn = env.get_hand_eye()  
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for MP4
     log_writer = cv2.VideoWriter(os.path.join(logdir, 'output_video.mp4'), fourcc, 15, (800, 800))  # 30 FPS
+    print("Video writer initialized to ", os.path.join(logdir, 'output_video.mp4'))
     log_pos = log_pos + np.array([0.7, 0.45, -0.2])
     log_orn_mat = sciR.from_quat(log_orn, scalar_first=False).as_matrix()
     log_orn_mat = log_orn_mat @ np.array([[0., 0, -1.], [0., 1., 0.], [1., 0., 0.]]) @ np.array([[0., 1., 0.], [-1., 0., 0.], [0., 0., 1.]]) 
     log_orn = sciR.from_matrix(log_orn_mat).as_quat()
         
     while True:
+        with joint_input.get_lock():
+            joint_input_np_array = np.frombuffer(joint_input.get_obj(), dtype=np.float32)
+        env.current_joint_input[:] = np.array(joint_input)
+
+        if gripper.value == 0:
+            env.panda_robot.open_gripper()
+        else:
+            env.panda_robot.close_gripper()
+        
         if pipe.poll():  # Check if there is a message
             msg, value = pipe.recv()
-            
+
             if msg == 'exit':
                 break
             
@@ -198,17 +209,19 @@ def run_simulation(mode, object_from_sdf, object_from_list,
                 # retrieve the objects
                 obj_id = env.get_object_in_hand()
                 pipe.send(obj_id)
+                
+            if msg == 'reset':
+                print("Resetting the simulation")
+                env.bc.restoreState(stateId=state_id)
+
+                # reset to home position
+                env.current_joint_input[:] = env.panda_robot.home_joint[:env.panda_robot.dof]
+                env.panda_robot.open_gripper()
+
+                with joint_input.get_lock():
+                    joint_input_np_array = np.frombuffer(joint_input.get_obj(), dtype=np.float32)
+                    joint_input_np_array[:env.panda_robot.dof] = env.panda_robot.home_joint[:env.panda_robot.dof]
                     
-        with joint_input.get_lock():
-            joint_input_np_array = np.frombuffer(joint_input.get_obj(), dtype=np.float32)
-            
-        env.current_joint_input[:] = np.array(joint_input)
-        
-        if gripper.value == 0:
-            env.panda_robot.open_gripper()
-        else:
-            env.panda_robot.close_gripper()
-        
         env.simulate_step()
         
         # write joint state
@@ -356,6 +369,17 @@ class FrankaClutter:
             return image.copy().astype(np.uint8), depth.copy(), seg.copy().astype(np.int32)
         else:
             return image.copy().astype(np.uint8), depth.copy()
+        
+    def reset(self):
+        self.parent_conn.send(("reset", None))
+        self._gripper.value = 0
+        time.sleep(1)
+        
+        # wait for the camera to start
+        rgb, _ = self.get_image()
+        while rgb.max() == 0:
+            time.sleep(1)
+            rgb, _ = self.get_image()
     
     def get_joint_data(self):
         """  
