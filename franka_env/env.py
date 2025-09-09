@@ -36,7 +36,7 @@ class FrankaPandaEnv:
         self.table_id = None
         self.object_id = []
         self.object_list = ["YcbBanana", "YcbPear", "YcbHammer", "YcbScissors", "YcbStrawberry", "YcbChipsCan",
-                            "YcbCrackerBox", "YcbFoamBrick", "YcbGelatinBox", "YcbMasterChefCan", "YcbMediumClamp", 
+                            "YcbFoamBrick", "YcbGelatinBox", "YcbMasterChefCan", "YcbMediumClamp", 
                             "YcbMustardBottle", "YcbPottedMeatCan", "YcbPowerDrill", "YcbTennisBall", "YcbTomatoSoupCan"]
         self.id2names = {}
 
@@ -110,11 +110,20 @@ class FrankaPandaEnv:
             self.add_urdf_object(os.path.join(ycb_database,  obj,  "model.urdf"))
             self.id2names[self.object_id[-1]] = obj
             self.wait_for_objects_to_rest()
+            # set all velocity / acceleration to 0
+            for idx in self.object_id:
+                self.bc.resetBaseVelocity(idx, [0, 0, 0], [0, 0, 0])
                 
         if self.remove_box:
             self.bc.removeBody(self.box_id)
-        self.wait_for_objects_to_rest(1e-3, max_step=2000)
         
+        total_steps, reset_iter = 2000, 8
+        for _ in range(reset_iter):
+            self.wait_for_objects_to_rest(1e-3, max_step=total_steps // reset_iter)
+            # set all velocity / acceleration to 0
+            for idx in self.object_id:
+                self.bc.resetBaseVelocity(idx, [0, 0, 0], [0, 0, 0])
+               
         np.set_printoptions(precision=8, suppress=True)
         for i, body in zip(obj_idx, self.object_id):
             pos, quat = self.bc.getBasePositionAndOrientation(body)
@@ -155,9 +164,13 @@ class FrankaPandaEnv:
             self.id2names[object_id_temp[-1]] = typename
 
         # object_id_temp = self.bc.loadSDF(object_sdf)
-
         self.object_id += object_id_temp
         self.wait_for_objects_to_rest()
+        
+        # set all velocity / acceleration to 0
+        for idx in self.object_id:
+            self.bc.resetBaseVelocity(idx, [0, 0, 0], [0, 0, 0])
+        
         np.set_printoptions(precision=4, suppress=True)
         for body in object_id_temp:
             pos, quat = self.bc.getBasePositionAndOrientation(body)
@@ -166,7 +179,7 @@ class FrankaPandaEnv:
             # euler = sciR.from_quat(quat).as_euler('xyz')
             print(np.concatenate([pos, euler]))
         np.set_printoptions(precision=8, suppress=False)
-
+        
         self.bc.configureDebugVisualizer(self.bc.COV_ENABLE_RENDERING, 1)
     
     def remove_objects(self):
