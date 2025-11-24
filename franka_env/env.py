@@ -36,8 +36,8 @@ class FrankaPandaEnv:
         self.table_id = None
         self.object_id = []
         self.object_list = ["YcbBanana", "YcbPear", "YcbHammer", "YcbScissors", "YcbStrawberry", "YcbChipsCan",
-                            "YcbFoamBrick", "YcbGelatinBox", "YcbMasterChefCan", "YcbMediumClamp", 
-                            "YcbMustardBottle", "YcbPottedMeatCan", "YcbPowerDrill", "YcbTennisBall", "YcbTomatoSoupCan"]
+                             "YcbCrackerBox", "YcbFoamBrick", "YcbGelatinBox", "YcbMasterChefCan", "YcbMediumClamp",  "YcbMustardBottle", 
+                            "YcbPottedMeatCan", "YcbPowerDrill", "YcbTennisBall", "YcbTomatoSoupCan"]
         self.id2names = {}
 
         if object_from_list:

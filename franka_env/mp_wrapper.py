@@ -2,6 +2,7 @@ import multiprocessing as mp
 import time
 import cv2
 import numpy as np
+import random
 import pybullet as p
 from scipy.spatial.transform import Rotation as sciR
 from franka_env.env import FrankaPandaEnv
@@ -150,17 +151,21 @@ class FrankaPandaEnvPhysics(FrankaPandaEnv):
                 break
             
     def get_object_in_hand(self):
+        bullet_id2object_id = {k: (v + 1) for v, k in enumerate(self.object_id)} 
+        contact_ids = []
         for id in self.object_id:
             contacts = self.bc.getContactPoints(self.panda_robot.robot_id, id)
             if len(contacts) > 0:
-                bullet_id2object_id = {k: (v + 1) for v, k in enumerate(self.object_id)} 
-                return bullet_id2object_id[id]
-        return -1 
+                contact_ids.append(bullet_id2object_id[id])
+        return contact_ids
     
 def run_simulation(mode, object_from_sdf, object_from_list,
                         joint_input, joint_data, 
                             gripper, camera_pose, ee_pose, 
                                 image_rgb, image_depth, image_seg, pipe, logdir, seed):
+    
+    np.random.seed(seed)
+    random.seed(seed)
     
     frequency = 1000.
     env = FrankaPandaEnvPhysics(connection_mode=mode,
